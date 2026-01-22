@@ -145,6 +145,31 @@ export function VideoPlaybackView({
                 {format(transaction.timestamp, 'MMMM dd, yyyy HH:mm:ss')}
               </p>
             </div>
+
+            <div className="flex items-center gap-2 ml-4">
+              <Button
+                variant={status === 'genuine' ? 'default' : 'outline'}
+                className={`gap-2 min-w-[120px] ${status === 'genuine'
+                  ? 'bg-green-600 hover:bg-green-700 border-green-500'
+                  : 'border-green-800 hover:bg-green-950 hover:border-green-600 text-green-500'
+                  }`}
+                onClick={() => setStatus('genuine')}
+              >
+                <CheckCircle className="h-4 w-4" />
+                Genuine
+              </Button>
+              <Button
+                variant={status === 'fraudulent' ? 'default' : 'outline'}
+                className={`gap-2 min-w-[120px] ${status === 'fraudulent'
+                  ? 'bg-red-600 hover:bg-red-700 border-red-500'
+                  : 'border-red-800 hover:bg-red-950 hover:border-red-600 text-red-500'
+                  }`}
+                onClick={() => setStatus('fraudulent')}
+              >
+                <XCircle className="h-4 w-4" />
+                Fraudulent
+              </Button>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -169,6 +194,7 @@ export function VideoPlaybackView({
           </div>
         </div>
       </div>
+
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
@@ -242,10 +268,18 @@ export function VideoPlaybackView({
           <Card className="bg-gray-900 border-gray-800 p-4">
             {/* Timeline with markers */}
             <div className="mb-4">
-              <div className="relative h-12 bg-gray-950 rounded-lg overflow-hidden">
+              <div
+                className="relative h-12 bg-gray-950 rounded-lg overflow-hidden cursor-pointer"
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const percentage = x / rect.width;
+                  handleSeek(percentage * duration);
+                }}
+              >
                 {/* Progress bar */}
                 <div
-                  className="absolute top-0 left-0 h-full bg-blue-600/30 transition-all"
+                  className="absolute top-0 left-0 h-full bg-blue-600/30 transition-all pointer-events-none"
                   style={{ width: `${(currentTime / duration) * 100}%` }}
                 />
 
@@ -253,9 +287,8 @@ export function VideoPlaybackView({
                 {videoMarkers.map((marker, idx) => (
                   <button
                     key={idx}
-                    className={`absolute top-0 h-full w-1 ${
-                      marker.type === 'fraud' ? 'bg-red-500' : 'bg-green-500'
-                    } hover:w-2 transition-all group/marker`}
+                    className={`absolute top-0 h-full w-1 ${marker.type === 'fraud' ? 'bg-red-500' : 'bg-green-500'
+                      } hover:w-2 transition-all group/marker`}
                     style={{ left: `${(marker.time / duration) * 100}%` }}
                     onClick={() => handleSeek(marker.time)}
                   >
@@ -348,13 +381,12 @@ export function VideoPlaybackView({
                   <button
                     key={item.id}
                     onClick={() => handleSeek(item.timestamp_offset)}
-                    className={`w-full text-left p-3 rounded-lg border transition-all ${
-                      currentItem?.id === item.id
-                        ? 'bg-blue-600/20 border-blue-600/50'
-                        : item.scanned
+                    className={`w-full text-left p-3 rounded-lg border transition-all ${currentItem?.id === item.id
+                      ? 'bg-blue-600/20 border-blue-600/50'
+                      : item.scanned
                         ? 'bg-gray-800/50 border-gray-700 hover:bg-gray-800'
                         : 'bg-red-950/30 border-red-600/50'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
@@ -395,40 +427,6 @@ export function VideoPlaybackView({
               <h3 className="font-semibold mb-4">Fraud Assessment</h3>
 
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="status">Status *</Label>
-                  <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger className="bg-gray-800 border-gray-700 mt-1">
-                      <SelectValue placeholder="Select status..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="genuine">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                          Genuine
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="fraudulent">
-                        <div className="flex items-center gap-2">
-                          <XCircle className="h-4 w-4 text-red-500" />
-                          Fraudulent
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="suspicious">
-                        <div className="flex items-center gap-2">
-                          <AlertTriangle className="h-4 w-4 text-amber-500" />
-                          Suspicious
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {status && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      Click "Submit Decision" to save and return to dashboard
-                    </p>
-                  )}
-                </div>
-
                 {status === 'fraudulent' && (
                   <div>
                     <Label htmlFor="category">Fraud Category *</Label>
@@ -474,15 +472,15 @@ export function VideoPlaybackView({
 
                 <Button
                   onClick={handleSubmit}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  className="w-full bg-blue-600 hover:bg-blue-700 h-10"
                 >
-                  Submit Decision
+                  Confirm Decision
                 </Button>
               </div>
             </div>
           </ScrollArea>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

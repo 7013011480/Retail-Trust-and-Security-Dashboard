@@ -30,7 +30,7 @@ export interface Alert {
   cashier_name: string;
   fraud_probability_score: number;
   timestamp: Date;
-  status: 'new' | 'reviewing' | 'resolved';
+  status: 'new' | 'reviewing' | 'resolved' | 'Fraudulent' | 'Pending for review' | 'Genuine';
 }
 
 export interface EmployeeScorecard {
@@ -241,6 +241,78 @@ export const mockAlerts: Alert[] = [
     fraud_probability_score: 88,
     timestamp: new Date(Date.now() - 1000 * 60 * 45),
     status: 'reviewing',
+  },
+  {
+    id: 'ALERT-004',
+    transaction_id: 'TXN-006',
+    shop_id: 'SHOP-01',
+    cashier_name: 'Michael Chen',
+    fraud_probability_score: 75,
+    timestamp: new Date(Date.now() - 1000 * 60 * 120),
+    status: 'resolved',
+  },
+  {
+    id: 'ALERT-005',
+    transaction_id: 'TXN-008',
+    shop_id: 'SHOP-03',
+    cashier_name: 'Lisa Martinez',
+    fraud_probability_score: 42,
+    timestamp: new Date(Date.now() - 1000 * 60 * 180),
+    status: 'resolved',
+  },
+  {
+    id: 'ALERT-006',
+    transaction_id: 'TXN-009',
+    shop_id: 'SHOP-02',
+    cashier_name: 'David Kim',
+    fraud_probability_score: 55,
+    timestamp: new Date(Date.now() - 1000 * 60 * 200),
+    status: 'resolved',
+  },
+  {
+    id: 'ALERT-007',
+    transaction_id: 'TXN-010',
+    shop_id: 'SHOP-01',
+    cashier_name: 'Sarah Johnson',
+    fraud_probability_score: 65,
+    timestamp: new Date(Date.now() - 1000 * 60 * 220),
+    status: 'resolved',
+  },
+  {
+    id: 'ALERT-008',
+    transaction_id: 'TXN-011',
+    shop_id: 'SHOP-03',
+    cashier_name: 'Amanda Foster',
+    fraud_probability_score: 70,
+    timestamp: new Date(Date.now() - 1000 * 60 * 240),
+    status: 'resolved',
+  },
+  {
+    id: 'ALERT-009',
+    transaction_id: 'TXN-012',
+    shop_id: 'SHOP-02',
+    cashier_name: 'Emily Rodriguez',
+    fraud_probability_score: 80,
+    timestamp: new Date(Date.now() - 1000 * 60 * 260),
+    status: 'resolved',
+  },
+  {
+    id: 'ALERT-010',
+    transaction_id: 'TXN-013',
+    shop_id: 'SHOP-01',
+    cashier_name: 'James Williams',
+    fraud_probability_score: 60,
+    timestamp: new Date(Date.now() - 1000 * 60 * 280),
+    status: 'resolved',
+  },
+  {
+    id: 'ALERT-011',
+    transaction_id: 'TXN-014',
+    shop_id: 'SHOP-03',
+    cashier_name: 'Lisa Martinez',
+    fraud_probability_score: 50,
+    timestamp: new Date(Date.now() - 1000 * 60 * 300),
+    status: 'resolved',
   },
 ];
 
