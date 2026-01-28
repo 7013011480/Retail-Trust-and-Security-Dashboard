@@ -18,27 +18,7 @@ interface TransactionTableProps {
 }
 
 export function TransactionTable({ transactions, onWatchFootage }: TransactionTableProps) {
-  const getFraudScoreBadge = (score: number) => {
-    if (score >= 80) {
-      return (
-        <Badge className="bg-red-600/20 text-red-400 border-red-600/50 hover:bg-red-600/30">
-          {score}% HIGH
-        </Badge>
-      );
-    } else if (score >= 60) {
-      return (
-        <Badge className="bg-amber-600/20 text-amber-400 border-amber-600/50 hover:bg-amber-600/30">
-          {score}% MEDIUM
-        </Badge>
-      );
-    } else {
-      return (
-        <Badge className="bg-green-600/20 text-green-400 border-green-600/50 hover:bg-green-600/30">
-          {score}% LOW
-        </Badge>
-      );
-    }
-  };
+
 
   const getStatusBadge = (status?: string) => {
     if (!status || status === 'pending') {
@@ -79,10 +59,10 @@ export function TransactionTable({ transactions, onWatchFootage }: TransactionTa
             <TableHead>POS ID</TableHead>
             <TableHead>Cashier Name</TableHead>
             <TableHead>Timestamp</TableHead>
-            <TableHead className="text-right">Transaction Total</TableHead>
-            <TableHead>Fraud Score</TableHead>
+            <TableHead className="text-right">Total</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-center">Actions</TableHead>
+            <TableHead>Triggered Rules</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -102,7 +82,6 @@ export function TransactionTable({ transactions, onWatchFootage }: TransactionTa
               <TableCell className="text-right font-mono">
                 ${transaction.transaction_total.toFixed(2)}
               </TableCell>
-              <TableCell>{getFraudScoreBadge(transaction.fraud_probability_score)}</TableCell>
               <TableCell>{getStatusBadge(transaction.status)}</TableCell>
               <TableCell className="text-center">
                 <Button
@@ -114,6 +93,9 @@ export function TransactionTable({ transactions, onWatchFootage }: TransactionTa
                   <Video className="h-4 w-4" />
                   Watch Footage
                 </Button>
+              </TableCell>
+              <TableCell className="text-xs text-gray-400 max-w-[200px] truncate">
+                {transaction.triggered_rules?.join(', ')}
               </TableCell>
             </TableRow>
           ))}

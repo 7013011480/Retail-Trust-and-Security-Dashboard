@@ -104,12 +104,14 @@ export function LiveAlertFeed({ alerts, onViewAlert, onDismissAlert }: LiveAlert
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Shop: {alert.shop_id}</span>
                     <Badge
-                      className={`${alert.fraud_probability_score >= 85
+                      className={`${alert.risk_level === 'High'
                         ? 'bg-red-600/20 text-red-400 border-red-600/50'
-                        : 'bg-amber-600/20 text-amber-400 border-amber-600/50'
+                        : alert.risk_level === 'Medium'
+                          ? 'bg-amber-600/20 text-amber-400 border-amber-600/50'
+                          : 'bg-green-600/20 text-green-400 border-green-600/50'
                         }`}
                     >
-                      {alert.fraud_probability_score}%
+                      {alert.risk_level}
                     </Badge>
                   </div>
                   <div className="text-sm text-gray-400">

@@ -11,22 +11,17 @@ import {
   Filter,
   RefreshCw,
   Users,
-  Map,
 } from 'lucide-react';
 import { TransactionTable } from '@/app/components/transaction-table';
 import { LiveAlertFeed } from '@/app/components/live-alert-feed';
-import { HeatmapView } from '@/app/components/heatmap-view';
 import { EmployeeScorecardView } from '@/app/components/employee-scorecard-view';
 import { VideoPlaybackView } from '@/app/components/video-playback-view';
 import {
   mockTransactions,
   mockAlerts,
-  mockHeatmapData,
   mockEmployeeScorecard,
-  mockReceiptItems,
   mockVideoMarkers,
   Transaction,
-  Alert,
 } from '@/lib/mock-data';
 import { toast } from 'sonner';
 
@@ -41,7 +36,7 @@ export function Dashboard() {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/ws');
+    const ws = new WebSocket('ws://localhost:8001/ws');
 
     ws.onopen = () => {
       console.log('Connected to WebSocket');
@@ -58,7 +53,6 @@ export function Dashboard() {
             timestamp: new Date(message.data.timestamp) // Convert string to Date
           };
           setTransactions((prev) => [newTxn, ...prev]);
-          toast.info(`New Transaction: ${newTxn.id}`);
         } else if (message.type === 'NEW_ALERT') {
           const newAlert = {
             ...message.data,
@@ -114,11 +108,10 @@ export function Dashboard() {
   const handleSubmitDecision = async (
     transactionId: string,
     status: string,
-    category: string,
     notes: string
   ) => {
     try {
-      await fetch(`http://localhost:8000/api/admin/validate?transaction_id=${transactionId}&decision=${status}&notes=${encodeURIComponent(notes)}`, {
+      await fetch(`http://localhost:8001/api/admin/validate?transaction_id=${transactionId}&decision=${status}&notes=${encodeURIComponent(notes)}`, {
         method: 'POST'
       });
       toast.success(`Decision submitted: ${status}`);
@@ -158,10 +151,10 @@ export function Dashboard() {
 
     // Apply active filter
     if (activeFilter === 'high') {
-      filtered = filtered.filter((t) => t.fraud_probability_score >= 80);
+      filtered = filtered.filter((t) => t.risk_level === 'High');
     } else if (activeFilter === 'medium') {
       filtered = filtered.filter(
-        (t) => t.fraud_probability_score >= 60 && t.fraud_probability_score < 80
+        (t) => t.risk_level === 'Medium'
       );
     } else if (activeFilter === 'pending') {
       filtered = filtered.filter((t) => !t.status || t.status === 'pending');
@@ -234,7 +227,7 @@ export function Dashboard() {
           >
             <div className="text-sm text-red-400 mb-1">High Risk</div>
             <div className="text-2xl font-bold text-red-400">
-              {transactions.filter((t) => t.fraud_probability_score >= 80).length}
+              {transactions.filter((t) => t.risk_level === 'High').length}
             </div>
           </Card>
           <Card
@@ -247,8 +240,7 @@ export function Dashboard() {
               {
                 transactions.filter(
                   (t) =>
-                    t.fraud_probability_score >= 60 &&
-                    t.fraud_probability_score < 80
+                    t.risk_level === 'Medium'
                 ).length
               }
             </div>
@@ -280,10 +272,6 @@ export function Dashboard() {
                 <TabsTrigger value="transactions" className="gap-2">
                   <LayoutDashboard className="h-4 w-4" />
                   Transaction Monitoring
-                </TabsTrigger>
-                <TabsTrigger value="heatmap" className="gap-2">
-                  <Map className="h-4 w-4" />
-                  Heatmap Analysis
                 </TabsTrigger>
                 <TabsTrigger value="employees" className="gap-2">
                   <Users className="h-4 w-4" />
@@ -338,10 +326,6 @@ export function Dashboard() {
                   Showing {filteredTransactions.length} of {transactions.length}{' '}
                   transactions
                 </div>
-              </TabsContent>
-
-              <TabsContent value="heatmap">
-                <HeatmapView data={mockHeatmapData} />
               </TabsContent>
 
               <TabsContent value="employees">

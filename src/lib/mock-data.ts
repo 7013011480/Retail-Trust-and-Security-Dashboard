@@ -8,7 +8,8 @@ export interface Transaction {
   cashier_name: string;
   timestamp: Date;
   transaction_total: number;
-  fraud_probability_score: number;
+  risk_level: 'High' | 'Medium' | 'Low';
+  triggered_rules?: string[];
   status?: 'genuine' | 'fraudulent' | 'suspicious' | 'pending';
   fraud_category?: string;
   notes?: string;
@@ -28,7 +29,8 @@ export interface Alert {
   transaction_id: string;
   shop_id: string;
   cashier_name: string;
-  fraud_probability_score: number;
+  risk_level: 'High' | 'Medium' | 'Low';
+  triggered_rules?: string[];
   timestamp: Date;
   status: 'new' | 'reviewing' | 'resolved' | 'Fraudulent' | 'Pending for review' | 'Genuine';
 }
@@ -62,8 +64,9 @@ export const mockTransactions: Transaction[] = [
     cashier_name: 'Sarah Johnson',
     timestamp: new Date(Date.now() - 1000 * 60 * 15),
     transaction_total: 87.45,
-    fraud_probability_score: 92,
-    status: 'pending',
+    risk_level: 'High',
+    triggered_rules: ['Payment Mismatch'],
+    status: 'fraudulent',
   },
   {
     id: 'TXN-002',
@@ -73,8 +76,9 @@ export const mockTransactions: Transaction[] = [
     cashier_name: 'Michael Chen',
     timestamp: new Date(Date.now() - 1000 * 60 * 25),
     transaction_total: 156.78,
-    fraud_probability_score: 78,
-    status: 'pending',
+    risk_level: 'Medium',
+    triggered_rules: ['High Discount'],
+    status: 'suspicious',
   },
   {
     id: 'TXN-003',
@@ -84,8 +88,9 @@ export const mockTransactions: Transaction[] = [
     cashier_name: 'Emily Rodriguez',
     timestamp: new Date(Date.now() - 1000 * 60 * 45),
     transaction_total: 234.99,
-    fraud_probability_score: 88,
-    status: 'pending',
+    risk_level: 'High',
+    triggered_rules: ['Corresponding object not present'],
+    status: 'fraudulent',
   },
   {
     id: 'TXN-004',
@@ -95,8 +100,8 @@ export const mockTransactions: Transaction[] = [
     cashier_name: 'James Williams',
     timestamp: new Date(Date.now() - 1000 * 60 * 60),
     transaction_total: 45.20,
-    fraud_probability_score: 65,
-    status: 'pending',
+    risk_level: 'Low',
+    status: 'genuine', // Was pending logic typically, but Low usually implies Genuine unless Pending Review. Let's keep pending or Genuine? User cares about High/Medium mapping. Low -> Genuine makes sense for cleared ones.
   },
   {
     id: 'TXN-005',
@@ -106,8 +111,9 @@ export const mockTransactions: Transaction[] = [
     cashier_name: 'Amanda Foster',
     timestamp: new Date(Date.now() - 1000 * 60 * 90),
     transaction_total: 312.50,
-    fraud_probability_score: 94,
-    status: 'pending',
+    risk_level: 'High',
+    triggered_rules: ['Bill not generated'],
+    status: 'fraudulent',
   },
   {
     id: 'TXN-006',
@@ -117,8 +123,9 @@ export const mockTransactions: Transaction[] = [
     cashier_name: 'David Kim',
     timestamp: new Date(Date.now() - 1000 * 60 * 120),
     transaction_total: 67.89,
-    fraud_probability_score: 71,
-    status: 'genuine',
+    risk_level: 'Medium',
+    triggered_rules: ['Refund Processed'],
+    status: 'suspicious',
   },
   {
     id: 'TXN-007',
@@ -128,9 +135,10 @@ export const mockTransactions: Transaction[] = [
     cashier_name: 'Sarah Johnson',
     timestamp: new Date(Date.now() - 1000 * 60 * 150),
     transaction_total: 189.99,
-    fraud_probability_score: 85,
+    risk_level: 'High',
+    triggered_rules: ['Payment Mismatch'],
     status: 'fraudulent',
-    fraud_category: 'Under-scanning',
+    fraud_category: 'Payment Mismatch',
   },
   {
     id: 'TXN-008',
@@ -140,7 +148,7 @@ export const mockTransactions: Transaction[] = [
     cashier_name: 'Lisa Martinez',
     timestamp: new Date(Date.now() - 1000 * 60 * 180),
     transaction_total: 523.45,
-    fraud_probability_score: 42,
+    risk_level: 'Low',
     status: 'genuine',
   },
 ];
@@ -220,7 +228,8 @@ export const mockAlerts: Alert[] = [
     transaction_id: 'TXN-005',
     shop_id: 'SHOP-03',
     cashier_name: 'Amanda Foster',
-    fraud_probability_score: 94,
+    risk_level: 'High',
+    triggered_rules: ['Bill not generated'],
     timestamp: new Date(Date.now() - 1000 * 60 * 90),
     status: 'new',
   },
@@ -229,7 +238,8 @@ export const mockAlerts: Alert[] = [
     transaction_id: 'TXN-001',
     shop_id: 'SHOP-01',
     cashier_name: 'Sarah Johnson',
-    fraud_probability_score: 92,
+    risk_level: 'High',
+    triggered_rules: ['Payment Mismatch'],
     timestamp: new Date(Date.now() - 1000 * 60 * 15),
     status: 'new',
   },
@@ -238,7 +248,8 @@ export const mockAlerts: Alert[] = [
     transaction_id: 'TXN-003',
     shop_id: 'SHOP-02',
     cashier_name: 'Emily Rodriguez',
-    fraud_probability_score: 88,
+    risk_level: 'Medium',
+    triggered_rules: ['High Discount'],
     timestamp: new Date(Date.now() - 1000 * 60 * 45),
     status: 'reviewing',
   },
@@ -247,7 +258,8 @@ export const mockAlerts: Alert[] = [
     transaction_id: 'TXN-006',
     shop_id: 'SHOP-01',
     cashier_name: 'Michael Chen',
-    fraud_probability_score: 75,
+    risk_level: 'Medium',
+    triggered_rules: ['Refund Processed'],
     timestamp: new Date(Date.now() - 1000 * 60 * 120),
     status: 'resolved',
   },
@@ -256,7 +268,7 @@ export const mockAlerts: Alert[] = [
     transaction_id: 'TXN-008',
     shop_id: 'SHOP-03',
     cashier_name: 'Lisa Martinez',
-    fraud_probability_score: 42,
+    risk_level: 'Low',
     timestamp: new Date(Date.now() - 1000 * 60 * 180),
     status: 'resolved',
   },
@@ -265,7 +277,7 @@ export const mockAlerts: Alert[] = [
     transaction_id: 'TXN-009',
     shop_id: 'SHOP-02',
     cashier_name: 'David Kim',
-    fraud_probability_score: 55,
+    risk_level: 'Medium',
     timestamp: new Date(Date.now() - 1000 * 60 * 200),
     status: 'resolved',
   },
@@ -274,7 +286,7 @@ export const mockAlerts: Alert[] = [
     transaction_id: 'TXN-010',
     shop_id: 'SHOP-01',
     cashier_name: 'Sarah Johnson',
-    fraud_probability_score: 65,
+    risk_level: 'Low',
     timestamp: new Date(Date.now() - 1000 * 60 * 220),
     status: 'resolved',
   },
@@ -283,7 +295,7 @@ export const mockAlerts: Alert[] = [
     transaction_id: 'TXN-011',
     shop_id: 'SHOP-03',
     cashier_name: 'Amanda Foster',
-    fraud_probability_score: 70,
+    risk_level: 'Medium',
     timestamp: new Date(Date.now() - 1000 * 60 * 240),
     status: 'resolved',
   },
