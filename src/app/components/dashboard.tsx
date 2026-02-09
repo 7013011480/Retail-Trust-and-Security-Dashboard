@@ -11,11 +11,13 @@ import {
   Filter,
   RefreshCw,
   Users,
+  Activity,
 } from 'lucide-react';
 import { TransactionTable } from '@/app/components/transaction-table';
 import { LiveAlertFeed } from '@/app/components/live-alert-feed';
 import { EmployeeScorecardView } from '@/app/components/employee-scorecard-view';
 import { VideoPlaybackView } from '@/app/components/video-playback-view';
+import { StreamViewer } from '@/app/components/stream-viewer';
 import {
   mockTransactions,
   mockAlerts,
@@ -278,6 +280,10 @@ export function Dashboard() {
                   <Users className="h-4 w-4" />
                   Employee Scorecards
                 </TabsTrigger>
+                <TabsTrigger value="streams" className="gap-2">
+                  <Activity className="h-4 w-4" />
+                  Stream Viewer
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="transactions" className="space-y-4">
@@ -332,6 +338,10 @@ export function Dashboard() {
               <TabsContent value="employees">
                 <EmployeeScorecardView employees={mockEmployeeScorecard} />
               </TabsContent>
+
+              <TabsContent value="streams">
+                <StreamViewer />
+              </TabsContent>
             </Tabs>
           </div>
         </div>
@@ -345,6 +355,6 @@ export function Dashboard() {
           />
         </div>
       </div>
-    </div>
+    </div >
   );
 }
