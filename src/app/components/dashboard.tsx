@@ -19,27 +19,26 @@ import { EmployeeScorecardView } from '@/app/components/employee-scorecard-view'
 import { VideoPlaybackView } from '@/app/components/video-playback-view';
 import { StreamViewer } from '@/app/components/stream-viewer';
 import {
-  mockTransactions,
-  mockAlerts,
   mockEmployeeScorecard,
   mockVideoMarkers,
   mockReceiptItems,
   Transaction,
+  Alert,
 } from '@/lib/mock-data';
 import { toast } from 'sonner';
 
 export function Dashboard() {
   const [activeView, setActiveView] = useState<'dashboard' | 'video'>('dashboard');
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  const [transactions, setTransactions] = useState(mockTransactions);
-  const [alerts, setAlerts] = useState(mockAlerts);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('transactions');
   const [activeFilter, setActiveFilter] = useState<'all' | 'high' | 'medium' | 'pending'>('all');
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/ws');
+    const ws = new WebSocket('ws://localhost:8001/ws');
 
     ws.onopen = () => {
       console.log('Connected to WebSocket');
@@ -114,7 +113,7 @@ export function Dashboard() {
     notes: string
   ) => {
     try {
-      await fetch(`http://localhost:8000/api/admin/validate?transaction_id=${transactionId}&decision=${status}&notes=${encodeURIComponent(notes)}`, {
+      await fetch(`http://localhost:8001/api/admin/validate?transaction_id=${transactionId}&decision=${status}&notes=${encodeURIComponent(notes)}`, {
         method: 'POST'
       });
       toast.success(`Decision submitted: ${status}`);

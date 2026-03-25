@@ -19,13 +19,13 @@ export function StreamViewer() {
     const fetchStreams = async () => {
         setLoading(true);
         try {
-            const vasRes = await fetch('http://localhost:8000/api/streams/vas_stream?count=20');
+            const vasRes = await fetch('http://localhost:8001/api/streams/vas_stream?count=20');
             const vasData = await vasRes.json();
             if (vasData.status === 'success') {
                 setVasEvents(vasData.data);
             }
 
-            const posRes = await fetch('http://localhost:8000/api/streams/pos_stream?count=20');
+            const posRes = await fetch('http://localhost:8001/api/streams/pos_stream?count=20');
             const posData = await posRes.json();
             if (posData.status === 'success') {
                 setPosEvents(posData.data);
