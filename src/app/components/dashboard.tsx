@@ -240,65 +240,62 @@ export function Dashboard() {
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-blue-800 px-6 py-4 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-              <Shield className="h-6 w-6 text-white" />
+      <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-blue-800 px-4 py-2 shadow-lg">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-white/20 rounded-md backdrop-blur-sm">
+              <Shield className="h-4 w-4 text-white" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Retail Trust & Security</h1>
-              <p className="text-sm text-blue-100">Real-time fraud detection & monitoring system</p>
-            </div>
+            <h1 className="text-base font-bold text-white">Retail Trust & Security</h1>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" className="gap-2 border-white/30 text-white hover:bg-white/10 bg-transparent" onClick={handleRefresh}>
-              <RefreshCw className="h-4 w-4" /> Refresh
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs border-white/30 text-white hover:bg-white/10 bg-transparent" onClick={handleRefresh}>
+              <RefreshCw className="h-3 w-3" /> Refresh
             </Button>
-            <div className={`flex items-center gap-2 px-3 py-1.5 border rounded-lg backdrop-blur-sm ${isConnected ? 'bg-green-500/20 border-green-300/50' : 'bg-red-500/20 border-red-300/50'}`}>
-              <div className={`h-2 w-2 rounded-full animate-pulse ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
-              <span className={`text-sm font-semibold ${isConnected ? 'text-green-100' : 'text-red-100'}`}>
-                {isConnected ? 'System Active' : 'Disconnected'}
+            <div className={`flex items-center gap-1.5 px-2 py-1 border rounded-md backdrop-blur-sm text-xs ${isConnected ? 'bg-green-500/20 border-green-300/50' : 'bg-red-500/20 border-red-300/50'}`}>
+              <div className={`h-1.5 w-1.5 rounded-full animate-pulse ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
+              <span className={`font-semibold ${isConnected ? 'text-green-100' : 'text-red-100'}`}>
+                {isConnected ? 'Live' : 'Offline'}
               </span>
             </div>
           </div>
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-4 gap-4">
-          <Card className={`bg-white/10 backdrop-blur-sm border-white/20 p-4 cursor-pointer transition-all hover:bg-white/20 ${activeFilter === 'all' ? 'ring-2 ring-white/50' : ''}`} onClick={() => handleFilterChange('all')}>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/20 rounded-lg"><LayoutDashboard className="h-5 w-5 text-white" /></div>
+        <div className="grid grid-cols-4 gap-3">
+          <Card className={`bg-white/10 backdrop-blur-sm border-white/20 px-3 py-2 cursor-pointer transition-all hover:bg-white/20 ${activeFilter === 'all' ? 'ring-2 ring-white/50' : ''}`} onClick={() => handleFilterChange('all')}>
+            <div className="flex items-center gap-2">
+              <LayoutDashboard className="h-4 w-4 text-blue-200" />
               <div>
-                <div className="text-sm text-blue-100">Total Transactions</div>
-                <div className="text-2xl font-bold text-white"><AnimatedCount value={timeFilteredTransactions.length} /></div>
+                <div className="text-xs text-blue-100">Transactions</div>
+                <div className="text-lg font-bold text-white leading-tight"><AnimatedCount value={timeFilteredTransactions.length} /></div>
               </div>
             </div>
           </Card>
-          <Card className={`bg-red-500/20 backdrop-blur-sm border-red-300/30 p-4 cursor-pointer transition-all hover:bg-red-500/30 ${activeFilter === 'high' ? 'ring-2 ring-red-300' : ''}`} onClick={() => handleFilterChange('high')}>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-500/30 rounded-lg"><ShieldAlert className="h-5 w-5 text-red-200" /></div>
+          <Card className={`bg-red-500/20 backdrop-blur-sm border-red-300/30 px-3 py-2 cursor-pointer transition-all hover:bg-red-500/30 ${activeFilter === 'high' ? 'ring-2 ring-red-300' : ''}`} onClick={() => handleFilterChange('high')}>
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-red-200" />
               <div>
-                <div className="text-sm text-red-200">High Risk</div>
-                <div className="text-2xl font-bold text-white"><AnimatedCount value={highCount} /></div>
+                <div className="text-xs text-red-200">High Risk</div>
+                <div className="text-lg font-bold text-white leading-tight"><AnimatedCount value={highCount} /></div>
               </div>
             </div>
           </Card>
-          <Card className={`bg-amber-500/20 backdrop-blur-sm border-amber-300/30 p-4 cursor-pointer transition-all hover:bg-amber-500/30 ${activeFilter === 'medium' ? 'ring-2 ring-amber-300' : ''}`} onClick={() => handleFilterChange('medium')}>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-500/30 rounded-lg"><AlertTriangle className="h-5 w-5 text-amber-200" /></div>
+          <Card className={`bg-amber-500/20 backdrop-blur-sm border-amber-300/30 px-3 py-2 cursor-pointer transition-all hover:bg-amber-500/30 ${activeFilter === 'medium' ? 'ring-2 ring-amber-300' : ''}`} onClick={() => handleFilterChange('medium')}>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-200" />
               <div>
-                <div className="text-sm text-amber-200">Medium Risk</div>
-                <div className="text-2xl font-bold text-white"><AnimatedCount value={mediumCount} /></div>
+                <div className="text-xs text-amber-200">Medium Risk</div>
+                <div className="text-lg font-bold text-white leading-tight"><AnimatedCount value={mediumCount} /></div>
               </div>
             </div>
           </Card>
-          <Card className={`bg-white/10 backdrop-blur-sm border-white/20 p-4 cursor-pointer transition-all hover:bg-white/20 ${activeFilter === 'pending' ? 'ring-2 ring-white/50' : ''}`} onClick={() => setActiveTab('alerts')}>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/20 rounded-lg"><Bell className="h-5 w-5 text-white" /></div>
+          <Card className={`bg-white/10 backdrop-blur-sm border-white/20 px-3 py-2 cursor-pointer transition-all hover:bg-white/20`} onClick={() => setActiveTab('alerts')}>
+            <div className="flex items-center gap-2">
+              <Bell className="h-4 w-4 text-blue-200" />
               <div>
-                <div className="text-sm text-blue-100">Open Alerts</div>
-                <div className="text-2xl font-bold text-white"><AnimatedCount value={openAlertCount} /></div>
+                <div className="text-xs text-blue-100">Open Alerts</div>
+                <div className="text-lg font-bold text-white leading-tight"><AnimatedCount value={openAlertCount} /></div>
               </div>
             </div>
           </Card>
