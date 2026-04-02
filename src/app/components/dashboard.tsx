@@ -235,7 +235,7 @@ export function Dashboard() {
   const filteredTransactions = getFilteredTransactions();
   const highCount = timeFilteredTransactions.filter(t => t.risk_level === 'High').length;
   const mediumCount = timeFilteredTransactions.filter(t => t.risk_level === 'Medium').length;
-  const pendingCount = timeFilteredTransactions.filter(t => !t.status || t.status === 'pending').length;
+  const openAlertCount = alerts.filter(a => a.status === 'new' || a.status === 'Fraudulent' || a.status === 'Pending for review').length;
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -293,12 +293,12 @@ export function Dashboard() {
               </div>
             </div>
           </Card>
-          <Card className={`bg-white/10 backdrop-blur-sm border-white/20 p-4 cursor-pointer transition-all hover:bg-white/20 ${activeFilter === 'pending' ? 'ring-2 ring-white/50' : ''}`} onClick={() => handleFilterChange('pending')}>
+          <Card className={`bg-white/10 backdrop-blur-sm border-white/20 p-4 cursor-pointer transition-all hover:bg-white/20 ${activeFilter === 'pending' ? 'ring-2 ring-white/50' : ''}`} onClick={() => setActiveTab('alerts')}>
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/20 rounded-lg"><Clock className="h-5 w-5 text-white" /></div>
+              <div className="p-2 bg-white/20 rounded-lg"><Bell className="h-5 w-5 text-white" /></div>
               <div>
-                <div className="text-sm text-blue-100">Pending Review</div>
-                <div className="text-2xl font-bold text-white"><AnimatedCount value={pendingCount} /></div>
+                <div className="text-sm text-blue-100">Open Alerts</div>
+                <div className="text-2xl font-bold text-white"><AnimatedCount value={openAlertCount} /></div>
               </div>
             </div>
           </Card>
