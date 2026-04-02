@@ -2,169 +2,145 @@ import { useMemo } from 'react';
 import { Card } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Transaction } from '@/lib/mock-data';
+import { ShieldCheck, ShieldAlert, AlertTriangle } from 'lucide-react';
 
 interface HeatmapViewProps {
   transactions: Transaction[];
+  storeNames?: Record<string, string>;
 }
 
-interface StoreNode {
+interface StoreData {
   store_id: string;
-  cam_id: string;
-  pos_id: string;
-  total_count: number;
-  flagged_count: number;
+  store_name: string;
+  total: number;
+  genuine: number;
+  suspicious: number;
+  fraudulent: number;
+  flagged: number;
+  flag_rate: number;
+  revenue: number;
+  avg_ticket: number;
 }
 
-export function HeatmapView({ transactions }: HeatmapViewProps) {
+export function HeatmapView({ transactions, storeNames = {} }: HeatmapViewProps) {
 
-  const storeNodes = useMemo(() => {
-    const nodeMap: Record<string, StoreNode> = {};
+  const stores = useMemo(() => {
+    const map: Record<string, StoreData> = {};
 
     transactions.forEach(t => {
-      const key = `${t.shop_id}_${t.cam_id}_${t.pos_id}`;
-      if (!nodeMap[key]) {
-        nodeMap[key] = {
+      if (!map[t.shop_id]) {
+        map[t.shop_id] = {
           store_id: t.shop_id,
-          cam_id: t.cam_id,
-          pos_id: t.pos_id,
-          total_count: 0,
-          flagged_count: 0,
+          store_name: t.shop_name || storeNames[t.shop_id] || t.shop_id,
+          total: 0, genuine: 0, suspicious: 0, fraudulent: 0,
+          flagged: 0, flag_rate: 0, revenue: 0, avg_ticket: 0,
         };
       }
-      nodeMap[key].total_count++;
-      if (t.risk_level !== 'Low') {
-        nodeMap[key].flagged_count++;
-      }
+      const s = map[t.shop_id];
+      s.total++;
+      s.revenue += t.transaction_total;
+      if (t.status === 'genuine') s.genuine++;
+      else if (t.status === 'suspicious') { s.suspicious++; s.flagged++; }
+      else if (t.status === 'fraudulent') { s.fraudulent++; s.flagged++; }
+      else s.flagged++; // unknown status counts as flagged
     });
 
-    return Object.values(nodeMap);
-  }, [transactions]);
+    return Object.values(map).map(s => ({
+      ...s,
+      flag_rate: s.total > 0 ? (s.flagged / s.total) * 100 : 0,
+      avg_ticket: s.total > 0 ? s.revenue / s.total : 0,
+    })).sort((a, b) => b.total - a.total);
+  }, [transactions, storeNames]);
 
-  const maxFlagged = Math.max(...storeNodes.map(n => n.flagged_count), 1);
+  const maxTotal = Math.max(...stores.map(s => s.total), 1);
 
-  const getHeatColor = (count: number) => {
-    if (count === 0) return 'bg-green-500';
-    const intensity = count / maxFlagged;
-    if (intensity >= 0.7) return 'bg-red-500';
-    if (intensity >= 0.5) return 'bg-orange-500';
-    if (intensity >= 0.3) return 'bg-yellow-500';
-    return 'bg-green-500';
+  const getHeatBg = (flagRate: number) => {
+    if (flagRate >= 30) return 'bg-red-50 border-red-200';
+    if (flagRate >= 15) return 'bg-amber-50 border-amber-200';
+    if (flagRate >= 5) return 'bg-yellow-50 border-yellow-200';
+    return 'bg-green-50 border-green-200';
   };
 
-  const getHeatOpacity = (count: number) => {
-    if (count === 0) return 'opacity-25';
-    const intensity = count / maxFlagged;
-    if (intensity >= 0.7) return 'opacity-70';
-    if (intensity >= 0.5) return 'opacity-55';
-    if (intensity >= 0.3) return 'opacity-40';
-    return 'opacity-25';
-  };
-
-  // Lay out nodes in a grid
-  const cols = Math.min(storeNodes.length, 3);
-  const getPosition = (index: number) => {
-    const col = index % cols;
-    const row = Math.floor(index / cols);
-    const totalRows = Math.ceil(storeNodes.length / cols);
-    return {
-      x: cols === 1 ? 50 : 20 + (col * 60) / Math.max(cols - 1, 1),
-      y: totalRows === 1 ? 50 : 20 + (row * 60) / Math.max(totalRows - 1, 1),
-    };
+  const getHeatIcon = (flagRate: number) => {
+    if (flagRate >= 15) return <ShieldAlert className="h-5 w-5 text-red-500" />;
+    if (flagRate >= 5) return <AlertTriangle className="h-5 w-5 text-amber-500" />;
+    return <ShieldCheck className="h-5 w-5 text-green-500" />;
   };
 
   return (
-    <Card className="bg-white border-gray-200 p-6 shadow-sm">
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">Store & Camera Heatmap</h3>
-        <p className="text-sm text-gray-500">
-          Flagged transaction frequency per store camera/POS — computed from actual transaction data
-        </p>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-bold text-gray-800 mb-1">Store Heatmap</h2>
+        <p className="text-sm text-gray-500">Store risk overview — sized by volume, colored by flag rate</p>
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-200">
-        <span className="text-sm text-gray-500">Intensity:</span>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-4 bg-green-500 opacity-25 rounded" />
-          <span className="text-xs text-gray-500">Low</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-4 bg-yellow-500 opacity-40 rounded" />
-          <span className="text-xs text-gray-500">Medium</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-4 bg-orange-500 opacity-55 rounded" />
-          <span className="text-xs text-gray-500">High</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-4 bg-red-500 opacity-70 rounded" />
-          <span className="text-xs text-gray-500">Critical</span>
-        </div>
+      <div className="flex items-center gap-4 text-xs">
+        <span className="text-gray-500">Risk level:</span>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-green-200 border border-green-300" /><span className="text-gray-600">Low (&lt;5%)</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-yellow-200 border border-yellow-300" /><span className="text-gray-600">Moderate (5-15%)</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-amber-200 border border-amber-300" /><span className="text-gray-600">High (15-30%)</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-red-200 border border-red-300" /><span className="text-gray-600">Critical (&gt;30%)</span></div>
       </div>
 
-      {storeNodes.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <p>No transaction data available for heatmap</p>
-        </div>
+      {stores.length === 0 ? (
+        <div className="text-center py-16 text-gray-400">No transaction data available</div>
       ) : (
-        <div className="relative bg-blue-50/50 rounded-lg p-8 min-h-[400px] border border-blue-100">
-          {storeNodes.map((node, index) => {
-            const pos = getPosition(index);
-            return (
-              <div
-                key={`${node.store_id}_${node.cam_id}`}
-                className="absolute group cursor-pointer"
-                style={{
-                  left: `${pos.x}%`,
-                  top: `${pos.y}%`,
-                  transform: 'translate(-50%, -50%)',
-                }}
-              >
-                {/* Heat circle */}
-                <div
-                  className={`w-20 h-20 rounded-full ${getHeatColor(node.flagged_count)} ${getHeatOpacity(node.flagged_count)} blur-sm transition-all group-hover:blur-md group-hover:scale-110`}
-                />
-
-                {/* Camera icon */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="bg-white border-2 border-gray-300 rounded-lg p-2 group-hover:border-blue-400 transition-colors shadow-sm">
-                    <svg
-                      className="w-6 h-6 text-gray-500 group-hover:text-blue-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                      />
-                    </svg>
-                  </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {stores.map(store => (
+            <Card
+              key={store.store_id}
+              className={`border p-4 transition-all hover:shadow-md ${getHeatBg(store.flag_rate)}`}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h3 className="font-semibold text-gray-800">{store.store_name}</h3>
+                  <span className="text-xs text-gray-400 font-mono">{store.store_id}</span>
                 </div>
+                {getHeatIcon(store.flag_rate)}
+              </div>
 
-                {/* Tooltip on hover */}
-                <div className="absolute -bottom-24 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                  <div className="bg-white border border-gray-200 rounded-lg p-3 whitespace-nowrap shadow-lg">
-                    <div className="text-xs font-mono text-gray-500 mb-1">{node.store_id}</div>
-                    <div className="text-sm font-semibold text-gray-800">{node.cam_id}</div>
-                    <div className="text-xs text-gray-500 mb-1">POS: {node.pos_id}</div>
-                    <div className="flex gap-2 mt-1">
-                      <Badge className="bg-blue-50 text-blue-700 border-blue-200">
-                        {node.total_count} Total
-                      </Badge>
-                      <Badge className="bg-red-50 text-red-700 border-red-200">
-                        {node.flagged_count} Flagged
-                      </Badge>
-                    </div>
-                  </div>
+              {/* Volume bar */}
+              <div className="mb-3">
+                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                  <span>{store.total} transactions</span>
+                  <span>{'\u20B9'}{store.revenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                </div>
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-400 rounded-full"
+                    style={{ width: `${(store.total / maxTotal) * 100}%` }}
+                  />
                 </div>
               </div>
-            );
-          })}
+
+              {/* Status breakdown */}
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="text-center bg-white/60 rounded p-1.5">
+                  <div className="text-sm font-bold text-green-700">{store.genuine}</div>
+                  <div className="text-[10px] text-gray-500">Genuine</div>
+                </div>
+                <div className="text-center bg-white/60 rounded p-1.5">
+                  <div className="text-sm font-bold text-amber-700">{store.suspicious}</div>
+                  <div className="text-[10px] text-gray-500">Suspicious</div>
+                </div>
+                <div className="text-center bg-white/60 rounded p-1.5">
+                  <div className="text-sm font-bold text-red-700">{store.fraudulent}</div>
+                  <div className="text-[10px] text-gray-500">Fraudulent</div>
+                </div>
+              </div>
+
+              {/* Footer stats */}
+              <div className="flex items-center justify-between text-xs">
+                <Badge className={`${store.flag_rate >= 15 ? 'bg-red-100 text-red-700 border-red-200' : store.flag_rate >= 5 ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
+                  {store.flag_rate.toFixed(1)}% flagged
+                </Badge>
+                <span className="text-gray-500">Avg {'\u20B9'}{store.avg_ticket.toLocaleString('en-IN', { maximumFractionDigits: 0 })}/txn</span>
+              </div>
+            </Card>
+          ))}
         </div>
       )}
-    </Card>
+    </div>
   );
 }

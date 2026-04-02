@@ -473,11 +473,11 @@ export function Dashboard() {
               </TabsContent>
 
               <TabsContent value="employees">
-                <EmployeeScorecardView transactions={timeFilteredTransactions} />
+                <EmployeeScorecardView transactions={timeFilteredTransactions} storeNames={storeNames} />
               </TabsContent>
 
               <TabsContent value="heatmap">
-                <HeatmapView transactions={timeFilteredTransactions} />
+                <HeatmapView transactions={timeFilteredTransactions} storeNames={storeNames} />
               </TabsContent>
 
               <TabsContent value="streams">
