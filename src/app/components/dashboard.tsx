@@ -10,16 +10,13 @@ import {
   Search,
   Filter,
   RefreshCw,
-  Users,
   Activity,
 } from 'lucide-react';
 import { TransactionTable } from '@/app/components/transaction-table';
 import { LiveAlertFeed } from '@/app/components/live-alert-feed';
-import { EmployeeScorecardView } from '@/app/components/employee-scorecard-view';
 import { VideoPlaybackView } from '@/app/components/video-playback-view';
 import { StreamViewer } from '@/app/components/stream-viewer';
 import {
-  mockEmployeeScorecard,
   mockVideoMarkers,
   mockReceiptItems,
   Transaction,
@@ -36,6 +33,8 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState('transactions');
   const [activeFilter, setActiveFilter] = useState<'all' | 'high' | 'medium' | 'pending'>('all');
   const [isConnected, setIsConnected] = useState(false);
+  const [rawVasData, setRawVasData] = useState<any[]>([]);
+  const [rawPosData, setRawPosData] = useState<any[]>([]);
 
   useEffect(() => {
     const ws = new WebSocket(`ws://${window.location.hostname}:8001/ws`);
@@ -74,6 +73,10 @@ export function Dashboard() {
               alert.transaction_id === id ? { ...alert, status: 'resolved' } : alert
             )
           );
+        } else if (message.type === 'RAW_VAS_DATA') {
+          setRawVasData(message.data);
+        } else if (message.type === 'RAW_POS_DATA') {
+          setRawPosData(message.data);
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
@@ -275,10 +278,6 @@ export function Dashboard() {
                   <LayoutDashboard className="h-4 w-4" />
                   Transaction Monitoring
                 </TabsTrigger>
-                <TabsTrigger value="employees" className="gap-2">
-                  <Users className="h-4 w-4" />
-                  Employee Scorecards
-                </TabsTrigger>
                 <TabsTrigger value="streams" className="gap-2">
                   <Activity className="h-4 w-4" />
                   Stream Viewer
@@ -334,12 +333,9 @@ export function Dashboard() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="employees">
-                <EmployeeScorecardView employees={mockEmployeeScorecard} />
-              </TabsContent>
 
               <TabsContent value="streams">
-                <StreamViewer />
+                <StreamViewer vasData={rawVasData} posData={rawPosData} />
               </TabsContent>
             </Tabs>
           </div>
