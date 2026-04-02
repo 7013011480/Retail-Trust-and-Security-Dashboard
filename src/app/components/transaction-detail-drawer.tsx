@@ -1,5 +1,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/app/components/ui/sheet";
 import { Badge } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
+import { Video } from "lucide-react";
 import type { Transaction } from "@/lib/mock-data";
 
 interface TransactionDetailDrawerProps {
@@ -292,6 +294,16 @@ export function TransactionDetailDrawer({ transaction, billData, open, onClose }
               Detailed bill data not available for this transaction
             </div>
           )}
+
+          {/* Watch Footage */}
+          <Button
+            variant="outline"
+            disabled
+            className="w-full gap-2 border-gray-200 text-gray-400 cursor-not-allowed"
+          >
+            <Video className="h-4 w-4" />
+            Watch Footage (coming soon)
+          </Button>
         </div>
       </SheetContent>
     </Sheet>

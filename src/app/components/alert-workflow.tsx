@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
-import { AlertTriangle, CheckCircle, Search as SearchIcon, XCircle, Clock } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Search as SearchIcon, XCircle, Clock, Video } from 'lucide-react';
 import { Alert, Transaction } from '@/lib/mock-data';
 import { toast } from 'sonner';
 
@@ -157,6 +157,16 @@ export function AlertWorkflow({ alerts, setAlerts, transactions }: AlertWorkflow
                       </div>
                     </div>
 
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled
+                        className="gap-1 border-gray-200 text-gray-400 cursor-not-allowed text-xs"
+                      >
+                        <Video className="h-3 w-3" />
+                        Footage
+                      </Button>
                     {(alert.status === 'new' || alert.status === 'Fraudulent' || alert.status === 'Pending for review' || alert.status === 'reviewing') && (
                       <Button
                         variant="outline"
@@ -167,6 +177,7 @@ export function AlertWorkflow({ alerts, setAlerts, transactions }: AlertWorkflow
                         {isSelected ? 'Cancel' : 'Resolve'}
                       </Button>
                     )}
+                    </div>
                   </div>
 
                   {/* Resolution form */}
