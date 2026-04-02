@@ -79,7 +79,9 @@ export function AnalyticsView({ transactions }: AnalyticsViewProps) {
     const ruleMap: Record<string, number> = {};
     transactions.forEach(t => {
       t.triggered_rules?.forEach(rule => {
-        ruleMap[rule] = (ruleMap[rule] || 0) + 1;
+        // Strip amounts/details in parentheses to group by rule name
+        const groupedName = rule.replace(/\s*\(.*\)$/, '');
+        ruleMap[groupedName] = (ruleMap[groupedName] || 0) + 1;
       });
     });
     return Object.entries(ruleMap)
