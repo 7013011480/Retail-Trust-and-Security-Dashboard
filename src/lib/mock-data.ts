@@ -122,23 +122,38 @@ export function generateAlertsFromTransactions(transactions: Transaction[]): Ale
  */
 export async function loadHistoricalData(): Promise<{ transactions: Transaction[]; alerts: Alert[]; billsMap: Record<string, any> }> {
   try {
-    const response = await fetch('/historical-data.json');
+    const response = await fetch(`http://${window.location.hostname}:8001/api/history?days=10`);
     const data = await response.json();
-    const bills = data?.data?.bills || [];
-    const transactions = processBillsToTransactions(bills);
+    const rawTransactions = data?.transactions || [];
+    const billsMap: Record<string, any> = data?.bills_map || {};
+
+    // Convert API response to Transaction objects
+    const transactions: Transaction[] = rawTransactions.map((t: any) => ({
+      ...t,
+      timestamp: new Date(t.timestamp),
+    }));
+
     const alerts = generateAlertsFromTransactions(transactions);
-
-    // Build a map of transaction ID -> raw bill for the detail drawer
-    const billsMap: Record<string, any> = {};
-    bills.forEach((bill: any, i: number) => {
-      const txnId = `TXN-${bill.billNo || String(i + 1).padStart(3, '0')}`;
-      billsMap[txnId] = bill;
-    });
-
     return { transactions, alerts, billsMap };
   } catch (error) {
-    console.error('Failed to load historical data:', error);
-    return { transactions: [], alerts: [], billsMap: {} };
+    console.error('Failed to load historical data from API, falling back to static file:', error);
+
+    // Fallback to static JSON file
+    try {
+      const response = await fetch('/historical-data.json');
+      const data = await response.json();
+      const bills = data?.data?.bills || [];
+      const transactions = processBillsToTransactions(bills);
+      const alerts = generateAlertsFromTransactions(transactions);
+      const billsMap: Record<string, any> = {};
+      bills.forEach((bill: any, i: number) => {
+        const txnId = `TXN-${bill.billNo || String(i + 1).padStart(3, '0')}`;
+        billsMap[txnId] = bill;
+      });
+      return { transactions, alerts, billsMap };
+    } catch {
+      return { transactions: [], alerts: [], billsMap: {} };
+    }
   }
 }
 
