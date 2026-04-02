@@ -128,16 +128,27 @@ export function TransactionDetailDrawer({ transaction, billData, open, onClose }
           <section className="rounded-lg border border-gray-200 bg-white p-4">
             <h3 className="mb-3 text-sm font-semibold text-blue-700 uppercase tracking-wide">Payment</h3>
 
-            <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="grid grid-cols-3 gap-3 mb-3">
               {billData?.netSale != null && (
                 <div className="bg-gray-50 rounded-lg p-3">
-                  <span className="text-xs text-gray-500">Net Sale (excl. tax)</span>
+                  <span className="text-xs text-gray-500">Net Sale</span>
                   <p className="text-lg font-bold text-gray-900">{"\u20B9"}{parseFloat(billData.netSale).toLocaleString("en-IN")}</p>
                 </div>
               )}
+              {billData?.billAmt != null && (
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <span className="text-xs text-gray-500">Bill Amount</span>
+                  <p className="text-lg font-bold text-gray-900">{"\u20B9"}{parseFloat(billData.billAmt).toLocaleString("en-IN")}</p>
+                </div>
+              )}
               <div className="bg-blue-50 rounded-lg p-3">
-                <span className="text-xs text-blue-600">Total (incl. tax)</span>
-                <p className="text-lg font-bold text-blue-900">{"\u20B9"}{transaction.transaction_total.toLocaleString("en-IN")}</p>
+                <span className="text-xs text-blue-600">Paid</span>
+                <p className="text-lg font-bold text-blue-900">
+                  {"\u20B9"}{payModes.length > 0
+                    ? payModes.reduce((sum: number, pm: any) => sum + parseFloat(pm.amt ?? pm.amount ?? 0), 0).toLocaleString("en-IN")
+                    : transaction.transaction_total.toLocaleString("en-IN")
+                  }
+                </p>
               </div>
             </div>
 
