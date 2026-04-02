@@ -35,11 +35,7 @@ import { EmployeeScorecardView } from '@/app/components/employee-scorecard-view'
 import { HeatmapView } from '@/app/components/heatmap-view';
 import { SettingsPanel } from '@/app/components/settings-panel';
 import { AlertWorkflow } from '@/app/components/alert-workflow';
-import {
-  loadHistoricalData,
-  Transaction,
-  Alert,
-} from '@/lib/mock-data';
+import type { Transaction, Alert } from '@/lib/mock-data';
 import { toast } from 'sonner';
 import { subDays, startOfDay } from 'date-fns';
 
@@ -162,17 +158,6 @@ export function Dashboard() {
     }
   }, [loadFromLocal]);
 
-  useEffect(() => {
-    fetch(`http://${window.location.hostname}:8001/api/stores`)
-      .then(r => r.json())
-      .then((stores: any[]) => {
-        const map: Record<string, string> = {};
-        stores.forEach(s => { map[s.cin] = s.name; });
-        setStoreNames(map);
-      })
-      .catch(() => {});
-  }, []);
-
   useEffect(() => { reloadHistoricalData(); }, [reloadHistoricalData]);
 
   useEffect(() => {
@@ -182,13 +167,19 @@ export function Dashboard() {
       try {
         const message = JSON.parse(event.data);
         if (message.type === 'NEW_TRANSACTION') {
-          setTransactions(prev => [{ ...message.data, timestamp: new Date(message.data.timestamp) }, ...prev]);
+          const txn = { ...message.data, timestamp: new Date(message.data.timestamp) };
+          // Enrich with store name if missing
+          if (!txn.shop_name && txn.shop_id) txn.shop_name = storeNames[txn.shop_id] || txn.shop_id;
+          setTransactions(prev => [txn, ...prev]);
         } else if (message.type === 'NEW_ALERT') {
-          setAlerts(prev => [{ ...message.data, timestamp: new Date(message.data.timestamp) }, ...prev]);
+          const alert = { ...message.data, timestamp: new Date(message.data.timestamp) };
+          if (!alert.shop_name && alert.shop_id) alert.shop_name = storeNames[alert.shop_id] || alert.shop_id;
+          setAlerts(prev => [alert, ...prev]);
         } else if (message.type === 'TRANSACTION_UPDATE') {
           const { id, status, notes } = message.data;
           setTransactions(prev => prev.map(t => t.id === id ? { ...t, status, notes } : t));
-          setAlerts(prev => prev.map(a => a.transaction_id === id ? { ...a, status: 'resolved' } : a));
+          // Use actual decision status for alert, not hardcoded 'resolved'
+          setAlerts(prev => prev.map(a => a.transaction_id === id ? { ...a, status } : a));
         } else if (message.type === 'RAW_VAS_DATA') { setRawVasData(message.data); }
         else if (message.type === 'RAW_POS_DATA') { setRawPosData(message.data); }
       } catch (error) { console.error('Error parsing WebSocket message:', error); }

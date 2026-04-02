@@ -59,18 +59,18 @@ export function AnalyticsView({ transactions }: AnalyticsViewProps) {
   }, [transactions]);
 
   const fraudByStore = useMemo(() => {
-    const storeMap: Record<string, { total: number; high: number; medium: number; low: number }> = {};
+    const storeMap: Record<string, { name: string; total: number; high: number; medium: number; low: number }> = {};
     transactions.forEach(t => {
       if (!storeMap[t.shop_id]) {
-        storeMap[t.shop_id] = { total: 0, high: 0, medium: 0, low: 0 };
+        storeMap[t.shop_id] = { name: t.shop_name || t.shop_id, total: 0, high: 0, medium: 0, low: 0 };
       }
       storeMap[t.shop_id].total++;
       if (t.risk_level === 'High') storeMap[t.shop_id].high++;
       else if (t.risk_level === 'Medium') storeMap[t.shop_id].medium++;
       else storeMap[t.shop_id].low++;
     });
-    return Object.entries(storeMap).map(([store, data]) => ({
-      store,
+    return Object.entries(storeMap).map(([_, data]) => ({
+      store: data.name,
       ...data,
     }));
   }, [transactions]);
@@ -107,17 +107,17 @@ export function AnalyticsView({ transactions }: AnalyticsViewProps) {
   }, [transactions]);
 
   const avgValueByStore = useMemo(() => {
-    const storeMap: Record<string, { sum: number; count: number }> = {};
+    const storeMap: Record<string, { name: string; sum: number; count: number }> = {};
     transactions.forEach(t => {
       if (!storeMap[t.shop_id]) {
-        storeMap[t.shop_id] = { sum: 0, count: 0 };
+        storeMap[t.shop_id] = { name: t.shop_name || t.shop_id, sum: 0, count: 0 };
       }
       storeMap[t.shop_id].sum += t.transaction_total;
       storeMap[t.shop_id].count++;
     });
     return Object.entries(storeMap)
-      .map(([store, data]) => ({
-        store,
+      .map(([_, data]) => ({
+        store: data.name,
         avgValue: Math.round(data.sum / data.count),
       }))
       .sort((a, b) => b.avgValue - a.avgValue);

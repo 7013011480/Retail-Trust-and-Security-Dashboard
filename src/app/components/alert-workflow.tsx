@@ -140,7 +140,7 @@ export function AlertWorkflow({ alerts, setAlerts, transactions }: AlertWorkflow
                           </Badge>
                         </div>
                         <div className="text-sm text-gray-600">
-                          Store: {(alert as any).shop_name || alert.shop_id} | Cashier: {alert.cashier_name}
+                          Store: {alert.shop_name || alert.shop_id} | Cashier: {alert.cashier_name}
                           {txn && ` | ${'\u20B9'}${txn.transaction_total.toLocaleString('en-IN')}`}
                         </div>
                         <div className="text-xs text-gray-400 mt-1">
