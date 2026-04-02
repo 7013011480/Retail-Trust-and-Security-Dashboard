@@ -38,7 +38,7 @@ export function Dashboard() {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8001/ws');
+    const ws = new WebSocket(`ws://${window.location.hostname}:8001/ws`);
 
     ws.onopen = () => {
       console.log('Connected to WebSocket');
@@ -108,12 +108,12 @@ export function Dashboard() {
   };
 
   const handleSubmitDecision = async (
-    transactionId: string,
+    transaction_id: string,
     status: string,
     notes: string
   ) => {
     try {
-      await fetch(`http://localhost:8001/api/admin/validate?transaction_id=${transactionId}&decision=${status}&notes=${encodeURIComponent(notes)}`, {
+      await fetch(`http://${window.location.hostname}:8001/api/admin/validate?transaction_id=${transaction_id}&decision=${status}&notes=${encodeURIComponent(notes)}`, {
         method: 'POST'
       });
       toast.success(`Decision submitted: ${status}`);
