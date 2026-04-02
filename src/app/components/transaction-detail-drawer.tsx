@@ -56,8 +56,9 @@ export function TransactionDetailDrawer({ transaction, billData, open, onClose }
             <h3 className="mb-3 text-sm font-semibold text-blue-700 uppercase tracking-wide">Store & Device Info</h3>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <div>
-                <dt className="text-gray-500">Shop ID</dt>
-                <dd className="font-medium text-gray-900">{transaction.shop_id}</dd>
+                <dt className="text-gray-500">Store</dt>
+                <dd className="font-medium text-gray-900">{transaction.shop_name || transaction.shop_id}</dd>
+                {transaction.shop_name && <dd className="text-xs text-gray-400 font-mono">{transaction.shop_id}</dd>}
               </div>
               <div>
                 <dt className="text-gray-500">POS ID</dt>

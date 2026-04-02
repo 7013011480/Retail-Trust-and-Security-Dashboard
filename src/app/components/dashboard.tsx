@@ -91,6 +91,7 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState('transactions');
   const [activeFilter, setActiveFilter] = useState<'all' | 'high' | 'medium' | 'pending'>('all');
   const [timeRange, setTimeRange] = useState<string>('all');
+  const [storeFilter, setStoreFilter] = useState<string>('all');
   const [isConnected, setIsConnected] = useState(false);
   const [rawVasData, setRawVasData] = useState<any[]>([]);
   const [rawPosData, setRawPosData] = useState<any[]>([]);
@@ -197,12 +198,24 @@ export function Dashboard() {
     return transactions.filter(t => t.timestamp >= cutoff);
   }, [transactions, timeRange]);
 
+  // Unique stores for filter dropdown
+  const uniqueStores = useMemo(() => {
+    const map = new Map<string, string>();
+    transactions.forEach(t => {
+      if (!map.has(t.shop_id)) map.set(t.shop_id, t.shop_name || t.shop_id);
+    });
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [transactions]);
+
   const getFilteredTransactions = () => {
     let filtered = timeFilteredTransactions.filter(t =>
       t.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.cashier_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.shop_id.toLowerCase().includes(searchTerm.toLowerCase())
+      t.shop_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.shop_name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    if (storeFilter !== 'all') filtered = filtered.filter(t => t.shop_id === storeFilter);
 
     if (activeFilter === 'high') filtered = filtered.filter(t => t.risk_level === 'High');
     else if (activeFilter === 'medium') filtered = filtered.filter(t => t.risk_level === 'Medium');
@@ -351,12 +364,23 @@ export function Dashboard() {
                         <SelectItem value="week">Last Week</SelectItem>
                       </SelectContent>
                     </Select>
+                    <Select value={storeFilter} onValueChange={setStoreFilter}>
+                      <SelectTrigger className="w-[160px] bg-white border-gray-200">
+                        <SelectValue placeholder="All Stores" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Stores</SelectItem>
+                        {uniqueStores.map(([id, name]) => (
+                          <SelectItem key={id} value={id}>{name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <div className="flex items-center gap-1">
                       <Input type="number" placeholder="Min ₹" value={minAmount} onChange={e => setMinAmount(e.target.value)} className="w-[90px] bg-gray-50 border-gray-200 text-sm" />
                       <span className="text-gray-400 text-xs">-</span>
                       <Input type="number" placeholder="Max ₹" value={maxAmount} onChange={e => setMaxAmount(e.target.value)} className="w-[90px] bg-gray-50 border-gray-200 text-sm" />
                     </div>
-                    <Button variant="outline" className="gap-2 border-gray-200" onClick={() => { handleFilterChange('all'); setMinAmount(''); setMaxAmount(''); setSearchTerm(''); setTimeRange('all'); }}>
+                    <Button variant="outline" className="gap-2 border-gray-200" onClick={() => { handleFilterChange('all'); setMinAmount(''); setMaxAmount(''); setSearchTerm(''); setTimeRange('all'); setStoreFilter('all'); }}>
                       <Filter className="h-4 w-4" /> Clear
                     </Button>
                     <Button variant="outline" className="gap-2 border-gray-200 text-blue-600 hover:bg-blue-50" onClick={() => { exportToCSV(filteredTransactions); toast.success(`Exported ${filteredTransactions.length} transactions`); }}>

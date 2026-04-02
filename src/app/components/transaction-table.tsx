@@ -53,7 +53,7 @@ export function TransactionTable({ transactions, onRowClick }: TransactionTableP
         <TableHeader>
           <TableRow className="bg-gray-50 hover:bg-gray-50 border-gray-200">
             <TableHead className="text-gray-600">Transaction ID</TableHead>
-            <TableHead className="text-gray-600">Shop ID</TableHead>
+            <TableHead className="text-gray-600">Store</TableHead>
             <TableHead className="text-gray-600">Cam ID</TableHead>
             <TableHead className="text-gray-600">POS ID</TableHead>
             <TableHead className="text-gray-600">Cashier Name</TableHead>
@@ -72,7 +72,10 @@ export function TransactionTable({ transactions, onRowClick }: TransactionTableP
               onClick={() => onRowClick?.(transaction)}
             >
               <TableCell className="font-mono text-sm text-gray-700">{transaction.id}</TableCell>
-              <TableCell className="font-mono text-sm text-gray-700">{transaction.shop_id}</TableCell>
+              <TableCell className="text-sm text-gray-700">
+                <div className="font-medium">{transaction.shop_name || transaction.shop_id}</div>
+                <div className="text-xs text-gray-400 font-mono">{transaction.shop_id}</div>
+              </TableCell>
               <TableCell className="font-mono text-sm text-gray-700">{transaction.cam_id}</TableCell>
               <TableCell className="font-mono text-sm text-gray-700">{transaction.pos_id}</TableCell>
               <TableCell className="text-gray-800">{transaction.cashier_name}</TableCell>

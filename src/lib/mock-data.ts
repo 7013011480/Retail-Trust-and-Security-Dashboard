@@ -3,6 +3,7 @@
 export interface Transaction {
   id: string;
   shop_id: string;
+  shop_name?: string;
   cam_id: string;
   pos_id: string;
   cashier_name: string;
