@@ -97,6 +97,9 @@ export function Dashboard() {
   const [rawVasData, setRawVasData] = useState<any[]>([]);
   const [rawPosData, setRawPosData] = useState<any[]>([]);
 
+  // Store name lookup
+  const [storeNames, setStoreNames] = useState<Record<string, string>>({});
+
   // Advanced filters
   const [minAmount, setMinAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
@@ -113,9 +116,22 @@ export function Dashboard() {
   const loadFromLocal = useCallback(async () => {
     try {
       const base = `http://${window.location.hostname}:8001`;
-      const res = await fetch(`${base}/api/transactions`);
-      const data = await res.json();
-      const txns = (data?.transactions || []).map((t: any) => ({ ...t, timestamp: new Date(t.timestamp) }));
+      const [txnRes, storesRes] = await Promise.all([
+        fetch(`${base}/api/transactions`),
+        fetch(`${base}/api/stores`).catch(() => null),
+      ]);
+      const data = await txnRes.json();
+      const names: Record<string, string> = {};
+      if (storesRes?.ok) {
+        const stores = await storesRes.json();
+        stores.forEach((s: any) => { names[s.cin] = s.name; });
+        setStoreNames(names);
+      }
+      const txns = (data?.transactions || []).map((t: any) => ({
+        ...t,
+        timestamp: new Date(t.timestamp),
+        shop_name: t.shop_name || names[t.shop_id] || t.shop_id,
+      }));
       setTransactions(txns);
       setBillsMap(data?.bills_map || {});
       setAlerts(generateAlertsFromTransactions(txns));
@@ -125,13 +141,12 @@ export function Dashboard() {
   }, []);
 
   const reloadHistoricalData = useCallback(async () => {
-    const { transactions: hist, alerts: histAlerts, billsMap: bMap } = await loadHistoricalData(() => {
-      // After background sync completes, reload from local to pick up new data
-      loadFromLocal();
-    });
-    setTransactions(hist);
-    setAlerts(histAlerts);
-    setBillsMap(bMap);
+    await loadFromLocal();
+    // Sync new bills in background, reload when done
+    const base = `http://${window.location.hostname}:8001`;
+    fetch(`${base}/api/history?days=10`)
+      .then(() => loadFromLocal())
+      .catch(() => {});
   }, [loadFromLocal]);
 
   const reloadAfterConfigChange = useCallback(async () => {
@@ -151,6 +166,18 @@ export function Dashboard() {
     } catch {
       toast.error('Failed to reload data');
     }
+  }, []);
+
+  // Load store names from backend
+  useEffect(() => {
+    fetch(`http://${window.location.hostname}:8001/api/stores`)
+      .then(r => r.json())
+      .then((stores: any[]) => {
+        const map: Record<string, string> = {};
+        stores.forEach(s => { map[s.cin] = s.name; });
+        setStoreNames(map);
+      })
+      .catch(() => {});
   }, []);
 
   // Load historical data (once on mount)
@@ -204,10 +231,12 @@ export function Dashboard() {
   const uniqueStores = useMemo(() => {
     const map = new Map<string, string>();
     transactions.forEach(t => {
-      if (!map.has(t.shop_id)) map.set(t.shop_id, t.shop_name || t.shop_id);
+      if (!map.has(t.shop_id)) {
+        map.set(t.shop_id, t.shop_name || storeNames[t.shop_id] || t.shop_id);
+      }
     });
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
-  }, [transactions]);
+  }, [transactions, storeNames]);
 
   const getFilteredTransactions = () => {
     let filtered = timeFilteredTransactions.filter(t =>
