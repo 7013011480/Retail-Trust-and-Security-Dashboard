@@ -131,7 +131,12 @@ export function AlertWorkflow({ alerts, setAlerts, transactions }: AlertWorkflow
                       {getStatusIcon(alert.status)}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono text-sm font-medium text-gray-800">{alert.transaction_id}</span>
+                          <span className="font-mono text-sm font-medium text-gray-800">
+                            {alert.transaction_id !== 'N/A'
+                              ? alert.transaction_id
+                              : (alert.triggered_rules?.[0] || alert.id)
+                            }
+                          </span>
                           {getStatusBadge(alert.status)}
                           <Badge className={`${alert.risk_level === 'High' ? 'bg-red-50 text-red-700 border-red-200' :
                             alert.risk_level === 'Medium' ? 'bg-amber-50 text-amber-700 border-amber-200' :
