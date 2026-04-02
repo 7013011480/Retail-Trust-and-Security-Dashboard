@@ -9,7 +9,7 @@ import {
 } from '@/app/components/ui/table';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
-import { Video, Eye } from 'lucide-react';
+import { Video } from 'lucide-react';
 import { Transaction } from '@/lib/mock-data';
 
 interface TransactionTableProps {
@@ -19,29 +19,28 @@ interface TransactionTableProps {
 
 export function TransactionTable({ transactions, onWatchFootage }: TransactionTableProps) {
 
-
   const getStatusBadge = (status?: string) => {
     if (!status || status === 'pending') {
       return (
-        <Badge variant="outline" className="text-gray-400">
+        <Badge variant="outline" className="text-gray-500 border-gray-300">
           Pending Review
         </Badge>
       );
     } else if (status === 'genuine') {
       return (
-        <Badge className="bg-green-600/20 text-green-400 border-green-600/50">
+        <Badge className="bg-green-50 text-green-700 border-green-200">
           Genuine
         </Badge>
       );
     } else if (status === 'fraudulent') {
       return (
-        <Badge className="bg-red-600/20 text-red-400 border-red-600/50">
+        <Badge className="bg-red-50 text-red-700 border-red-200">
           Fraudulent
         </Badge>
       );
     } else if (status === 'suspicious') {
       return (
-        <Badge className="bg-amber-600/20 text-amber-400 border-amber-600/50">
+        <Badge className="bg-amber-50 text-amber-700 border-amber-200">
           Suspicious
         </Badge>
       );
@@ -49,52 +48,52 @@ export function TransactionTable({ transactions, onWatchFootage }: TransactionTa
   };
 
   return (
-    <div className="rounded-lg border border-gray-800 overflow-hidden">
+    <div className="rounded-lg border border-gray-200 overflow-hidden bg-white shadow-sm">
       <Table>
         <TableHeader>
-          <TableRow className="bg-gray-900/50 hover:bg-gray-900/50 border-gray-800">
-            <TableHead>Transaction ID</TableHead>
-            <TableHead>Shop ID</TableHead>
-            <TableHead>Cam ID</TableHead>
-            <TableHead>POS ID</TableHead>
-            <TableHead>Cashier Name</TableHead>
-            <TableHead>Timestamp</TableHead>
-            <TableHead className="text-right">Total</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-center">Actions</TableHead>
-            <TableHead>Triggered Rules</TableHead>
+          <TableRow className="bg-gray-50 hover:bg-gray-50 border-gray-200">
+            <TableHead className="text-gray-600">Transaction ID</TableHead>
+            <TableHead className="text-gray-600">Shop ID</TableHead>
+            <TableHead className="text-gray-600">Cam ID</TableHead>
+            <TableHead className="text-gray-600">POS ID</TableHead>
+            <TableHead className="text-gray-600">Cashier Name</TableHead>
+            <TableHead className="text-gray-600">Timestamp</TableHead>
+            <TableHead className="text-right text-gray-600">Total</TableHead>
+            <TableHead className="text-gray-600">Status</TableHead>
+            <TableHead className="text-center text-gray-600">Actions</TableHead>
+            <TableHead className="text-gray-600">Triggered Rules</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {transactions.map((transaction) => (
+          {transactions.map((transaction, index) => (
             <TableRow
               key={transaction.id}
-              className="border-gray-800 hover:bg-gray-900/30"
+              className={`border-gray-100 hover:bg-blue-50/50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}
             >
-              <TableCell className="font-mono text-sm">{transaction.id}</TableCell>
-              <TableCell className="font-mono text-sm">{transaction.shop_id}</TableCell>
-              <TableCell className="font-mono text-sm">{transaction.cam_id}</TableCell>
-              <TableCell className="font-mono text-sm">{transaction.pos_id}</TableCell>
-              <TableCell>{transaction.cashier_name}</TableCell>
-              <TableCell className="text-sm">
+              <TableCell className="font-mono text-sm text-gray-700">{transaction.id}</TableCell>
+              <TableCell className="font-mono text-sm text-gray-700">{transaction.shop_id}</TableCell>
+              <TableCell className="font-mono text-sm text-gray-700">{transaction.cam_id}</TableCell>
+              <TableCell className="font-mono text-sm text-gray-700">{transaction.pos_id}</TableCell>
+              <TableCell className="text-gray-800">{transaction.cashier_name}</TableCell>
+              <TableCell className="text-sm text-gray-600">
                 {format(transaction.timestamp, 'MMM dd, yyyy HH:mm:ss')}
               </TableCell>
-              <TableCell className="text-right font-mono">
-                ${transaction.transaction_total.toFixed(2)}
+              <TableCell className="text-right font-mono text-gray-800">
+                {'\u20B9'}{transaction.transaction_total.toFixed(2)}
               </TableCell>
               <TableCell>{getStatusBadge(transaction.status)}</TableCell>
               <TableCell className="text-center">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-2 border-blue-600/50 text-blue-400 hover:bg-blue-600/10 hover:text-blue-300"
+                  className="gap-2 border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                   onClick={() => onWatchFootage(transaction.id)}
                 >
                   <Video className="h-4 w-4" />
                   Watch Footage
                 </Button>
               </TableCell>
-              <TableCell className="text-xs text-gray-400 max-w-[200px] truncate">
+              <TableCell className="text-xs text-gray-500 max-w-[200px] truncate">
                 {transaction.triggered_rules?.join(', ')}
               </TableCell>
             </TableRow>

@@ -2,7 +2,7 @@
 @import './tailwind.css';
 @import './theme.css';
 
-/* Force dark mode for the entire application */
+/* Global layout styles */
 html {
   height: 100%;
   margin: 0;

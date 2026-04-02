@@ -53,15 +53,13 @@ export function VideoPlaybackView({
 }: VideoPlaybackViewProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration] = useState(90); // Mock video duration
+  const [duration] = useState(90);
   const videoContainerRef = useRef<HTMLDivElement>(null);
 
-  // Decision form state
   const [status, setStatus] = useState<string>('');
   const [fraudCategory, setFraudCategory] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
 
-  // Simulate video playback
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isPlaying && currentTime < duration) {
@@ -110,7 +108,6 @@ export function VideoPlaybackView({
     toast.success('Evidence package exported successfully');
   };
 
-  // Get current receipt item based on video time
   const getCurrentReceiptItem = () => {
     return receiptItems.find(
       (item) =>
@@ -122,26 +119,26 @@ export function VideoPlaybackView({
   const currentItem = getCurrentReceiptItem();
 
   return (
-    <div className="h-screen flex flex-col bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <div className="bg-gray-900 border-b border-gray-800 p-4">
+      <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-blue-800 border-b border-blue-800 p-4 shadow-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="sm"
               onClick={onBack}
-              className="gap-2"
+              className="gap-2 text-white hover:bg-white/10"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Dashboard
             </Button>
-            <Separator orientation="vertical" className="h-6" />
+            <Separator orientation="vertical" className="h-6 bg-white/30" />
             <div>
-              <h2 className="text-lg font-semibold">
+              <h2 className="text-lg font-semibold text-white">
                 Transaction Review - {transaction.id}
               </h2>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-blue-100">
                 {format(transaction.timestamp, 'MMMM dd, yyyy HH:mm:ss')}
               </p>
             </div>
@@ -150,8 +147,8 @@ export function VideoPlaybackView({
               <Button
                 variant={status === 'genuine' ? 'default' : 'outline'}
                 className={`gap-2 min-w-[120px] ${status === 'genuine'
-                  ? 'bg-green-600 hover:bg-green-700 border-green-500'
-                  : 'border-green-800 hover:bg-green-950 hover:border-green-600 text-green-500'
+                  ? 'bg-green-600 hover:bg-green-700 border-green-500 text-white'
+                  : 'border-green-300 hover:bg-green-500/20 text-green-100'
                   }`}
                 onClick={() => setStatus('genuine')}
               >
@@ -161,8 +158,8 @@ export function VideoPlaybackView({
               <Button
                 variant={status === 'fraudulent' ? 'default' : 'outline'}
                 className={`gap-2 min-w-[120px] ${status === 'fraudulent'
-                  ? 'bg-red-600 hover:bg-red-700 border-red-500'
-                  : 'border-red-800 hover:bg-red-950 hover:border-red-600 text-red-500'
+                  ? 'bg-red-600 hover:bg-red-700 border-red-500 text-white'
+                  : 'border-red-300 hover:bg-red-500/20 text-red-100'
                   }`}
                 onClick={() => setStatus('fraudulent')}
               >
@@ -173,19 +170,10 @@ export function VideoPlaybackView({
           </div>
 
           <div className="flex items-center gap-3">
-            <Badge
-              className={
-                transaction.fraud_probability_score >= 80
-                  ? 'bg-red-600/20 text-red-400 border-red-600/50'
-                  : 'bg-amber-600/20 text-amber-400 border-amber-600/50'
-              }
-            >
-              Fraud Score: {transaction.fraud_probability_score}%
-            </Badge>
             <Button
               variant="outline"
               size="sm"
-              className="gap-2"
+              className="gap-2 border-white/30 text-white hover:bg-white/10 bg-transparent"
               onClick={handleExport}
             >
               <Download className="h-4 w-4" />
@@ -203,16 +191,16 @@ export function VideoPlaybackView({
           {/* Video Container */}
           <div
             ref={videoContainerRef}
-            className="flex-1 bg-black rounded-lg overflow-hidden mb-4 relative group"
+            className="flex-1 bg-gray-900 rounded-lg overflow-hidden mb-4 relative group shadow-lg"
           >
             {/* Mock video display */}
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-950">
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
               <div className="text-center">
                 <div className="text-6xl mb-4">🎥</div>
-                <p className="text-gray-400">
+                <p className="text-gray-300">
                   Mock CCTV Footage - {transaction.cam_id}
                 </p>
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-sm text-gray-400 mt-2">
                   Cashier: {transaction.cashier_name} | POS: {transaction.pos_id}
                 </p>
               </div>
@@ -222,7 +210,7 @@ export function VideoPlaybackView({
                 <div className="absolute bottom-20 left-6 bg-blue-600/90 text-white px-4 py-2 rounded-lg">
                   <div className="text-sm font-semibold">Currently Scanning:</div>
                   <div className="text-lg">{currentItem.name}</div>
-                  <div className="text-sm opacity-80">${currentItem.price}</div>
+                  <div className="text-sm opacity-80">{'\u20B9'}{currentItem.price}</div>
                 </div>
               )}
 
@@ -265,11 +253,11 @@ export function VideoPlaybackView({
           </div>
 
           {/* Video Controls */}
-          <Card className="bg-gray-900 border-gray-800 p-4">
+          <Card className="bg-white border-gray-200 p-4 shadow-sm">
             {/* Timeline with markers */}
             <div className="mb-4">
               <div
-                className="relative h-12 bg-gray-950 rounded-lg overflow-hidden cursor-pointer"
+                className="relative h-12 bg-gray-100 rounded-lg overflow-hidden cursor-pointer"
                 onClick={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = e.clientX - rect.left;
@@ -279,7 +267,7 @@ export function VideoPlaybackView({
               >
                 {/* Progress bar */}
                 <div
-                  className="absolute top-0 left-0 h-full bg-blue-600/30 transition-all pointer-events-none"
+                  className="absolute top-0 left-0 h-full bg-blue-200 transition-all pointer-events-none"
                   style={{ width: `${(currentTime / duration) * 100}%` }}
                 />
 
@@ -293,7 +281,7 @@ export function VideoPlaybackView({
                     onClick={() => handleSeek(marker.time)}
                   >
                     <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover/marker:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                      <div className="bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs">
+                      <div className="bg-white border border-gray-200 rounded px-2 py-1 text-xs shadow-lg text-gray-700">
                         {marker.label}
                       </div>
                     </div>
@@ -302,19 +290,19 @@ export function VideoPlaybackView({
 
                 {/* Playhead */}
                 <div
-                  className="absolute top-0 h-full w-1 bg-white shadow-lg"
+                  className="absolute top-0 h-full w-1 bg-blue-600 shadow-lg"
                   style={{ left: `${(currentTime / duration) * 100}%` }}
                 />
 
                 {/* Timeline labels */}
-                <div className="absolute inset-0 flex items-center justify-between px-2 text-xs text-gray-400 pointer-events-none">
+                <div className="absolute inset-0 flex items-center justify-between px-2 text-xs text-gray-500 pointer-events-none">
                   <span>{formatTime(0)}</span>
                   <span>{formatTime(duration)}</span>
                 </div>
               </div>
 
               {/* Current time display */}
-              <div className="flex items-center justify-center mt-2 text-sm text-gray-400">
+              <div className="flex items-center justify-center mt-2 text-sm text-gray-500">
                 <Clock className="h-4 w-4 mr-2" />
                 {formatTime(currentTime)} / {formatTime(duration)}
               </div>
@@ -325,6 +313,7 @@ export function VideoPlaybackView({
               <Button
                 variant="outline"
                 size="icon"
+                className="border-gray-200"
                 onClick={() => handleSkip(-10)}
               >
                 <SkipBack className="h-4 w-4" />
@@ -346,6 +335,7 @@ export function VideoPlaybackView({
               <Button
                 variant="outline"
                 size="icon"
+                className="border-gray-200"
                 onClick={() => handleSkip(10)}
               >
                 <SkipForward className="h-4 w-4" />
@@ -353,11 +343,11 @@ export function VideoPlaybackView({
 
               <Separator orientation="vertical" className="h-8 mx-2" />
 
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" className="border-gray-200">
                 <Volume2 className="h-4 w-4" />
               </Button>
 
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" className="border-gray-200">
                 <Maximize className="h-4 w-4" />
               </Button>
             </div>
@@ -365,13 +355,13 @@ export function VideoPlaybackView({
         </div>
 
         {/* Right Sidebar */}
-        <div className="w-96 border-l border-gray-800 flex flex-col bg-gray-900/30">
+        <div className="w-96 border-l border-gray-200 flex flex-col bg-white">
           <ScrollArea className="flex-1">
             {/* Digital Receipt */}
-            <div className="p-4 border-b border-gray-800">
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
+            <div className="p-4 border-b border-gray-200">
+              <h3 className="font-semibold mb-3 flex items-center gap-2 text-gray-800">
                 <span>Digital Receipt</span>
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs border-gray-300">
                   Synced
                 </Badge>
               </h3>
@@ -382,29 +372,29 @@ export function VideoPlaybackView({
                     key={item.id}
                     onClick={() => handleSeek(item.timestamp_offset)}
                     className={`w-full text-left p-3 rounded-lg border transition-all ${currentItem?.id === item.id
-                      ? 'bg-blue-600/20 border-blue-600/50'
+                      ? 'bg-blue-50 border-blue-300'
                       : item.scanned
-                        ? 'bg-gray-800/50 border-gray-700 hover:bg-gray-800'
-                        : 'bg-red-950/30 border-red-600/50'
+                        ? 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                        : 'bg-red-50 border-red-200'
                       }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
-                        <div className="text-sm font-medium">{item.name}</div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          Qty: {item.quantity} × ${item.price.toFixed(2)}
+                        <div className="text-sm font-medium text-gray-800">{item.name}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Qty: {item.quantity} × {'\u20B9'}{item.price.toFixed(2)}
                         </div>
-                        <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                        <div className="text-xs text-gray-400 mt-1 flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {item.timestamp_offset}s
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-semibold">
-                          ${(item.quantity * item.price).toFixed(2)}
+                        <div className="text-sm font-semibold text-gray-800">
+                          {'\u20B9'}{(item.quantity * item.price).toFixed(2)}
                         </div>
                         {!item.scanned && (
-                          <Badge className="mt-1 text-xs bg-red-600/20 text-red-400 border-red-600/50">
+                          <Badge className="mt-1 text-xs bg-red-50 text-red-700 border-red-200">
                             Not Scanned
                           </Badge>
                         )}
@@ -416,15 +406,15 @@ export function VideoPlaybackView({
 
               <Separator className="my-4" />
 
-              <div className="flex items-center justify-between text-lg font-bold">
+              <div className="flex items-center justify-between text-lg font-bold text-gray-800">
                 <span>Total:</span>
-                <span>${transaction.transaction_total.toFixed(2)}</span>
+                <span>{'\u20B9'}{transaction.transaction_total.toFixed(2)}</span>
               </div>
             </div>
 
             {/* Decision Form */}
             <div className="p-4">
-              <h3 className="font-semibold mb-4">Fraud Assessment</h3>
+              <h3 className="font-semibold mb-4 text-gray-800">Fraud Assessment</h3>
 
               <div className="space-y-4">
                 {status === 'fraudulent' && (
@@ -434,7 +424,7 @@ export function VideoPlaybackView({
                       value={fraudCategory}
                       onValueChange={setFraudCategory}
                     >
-                      <SelectTrigger className="bg-gray-800 border-gray-700 mt-1">
+                      <SelectTrigger className="bg-gray-50 border-gray-200 mt-1">
                         <SelectValue placeholder="Select category..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -466,13 +456,13 @@ export function VideoPlaybackView({
                     placeholder="Add any additional observations or context..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="bg-gray-800 border-gray-700 mt-1 min-h-[100px]"
+                    className="bg-gray-50 border-gray-200 mt-1 min-h-[100px]"
                   />
                 </div>
 
                 <Button
                   onClick={handleSubmit}
-                  className="w-full bg-blue-600 hover:bg-blue-700 h-10"
+                  className="w-full bg-blue-600 hover:bg-blue-700 h-10 text-white"
                 >
                   Confirm Decision
                 </Button>
@@ -481,6 +471,6 @@ export function VideoPlaybackView({
           </ScrollArea>
         </div>
       </div>
-    </div >
+    </div>
   );
 }

@@ -11,52 +11,52 @@ export function HeatmapView({ data }: HeatmapViewProps) {
 
   const getHeatColor = (count: number) => {
     const intensity = count / maxFlagged;
-    if (intensity >= 0.7) return 'bg-red-600';
-    if (intensity >= 0.5) return 'bg-orange-600';
-    if (intensity >= 0.3) return 'bg-yellow-600';
-    return 'bg-green-600';
+    if (intensity >= 0.7) return 'bg-red-500';
+    if (intensity >= 0.5) return 'bg-orange-500';
+    if (intensity >= 0.3) return 'bg-yellow-500';
+    return 'bg-green-500';
   };
 
   const getHeatOpacity = (count: number) => {
     const intensity = count / maxFlagged;
-    if (intensity >= 0.7) return 'opacity-90';
-    if (intensity >= 0.5) return 'opacity-70';
-    if (intensity >= 0.3) return 'opacity-50';
-    return 'opacity-30';
+    if (intensity >= 0.7) return 'opacity-70';
+    if (intensity >= 0.5) return 'opacity-55';
+    if (intensity >= 0.3) return 'opacity-40';
+    return 'opacity-25';
   };
 
   return (
-    <Card className="bg-gray-900/50 border-gray-800 p-6">
+    <Card className="bg-white border-gray-200 p-6 shadow-sm">
       <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">Store Floor Plan - Flagged Events</h3>
-        <p className="text-sm text-gray-400">
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">Store Floor Plan - Flagged Events</h3>
+        <p className="text-sm text-gray-500">
           Heat intensity shows frequency of flagged transactions per checkout lane
         </p>
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-800">
-        <span className="text-sm text-gray-400">Intensity:</span>
+      <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-200">
+        <span className="text-sm text-gray-500">Intensity:</span>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-4 bg-green-600 opacity-30 rounded" />
+          <div className="w-8 h-4 bg-green-500 opacity-25 rounded" />
           <span className="text-xs text-gray-500">Low</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-4 bg-yellow-600 opacity-50 rounded" />
+          <div className="w-8 h-4 bg-yellow-500 opacity-40 rounded" />
           <span className="text-xs text-gray-500">Medium</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-4 bg-orange-600 opacity-70 rounded" />
+          <div className="w-8 h-4 bg-orange-500 opacity-55 rounded" />
           <span className="text-xs text-gray-500">High</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-4 bg-red-600 opacity-90 rounded" />
+          <div className="w-8 h-4 bg-red-500 opacity-70 rounded" />
           <span className="text-xs text-gray-500">Critical</span>
         </div>
       </div>
 
       {/* Store layout visualization */}
-      <div className="relative bg-gray-950/50 rounded-lg p-8 min-h-[400px] border border-gray-800">
+      <div className="relative bg-blue-50/50 rounded-lg p-8 min-h-[400px] border border-blue-100">
         {/* Store sections */}
         <div className="absolute top-4 left-4 text-xs text-gray-500 font-mono">SHOP-01</div>
         <div className="absolute top-[33%] left-4 text-xs text-gray-500 font-mono">SHOP-02</div>
@@ -64,7 +64,7 @@ export function HeatmapView({ data }: HeatmapViewProps) {
 
         {/* Entrance label */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-gray-500 font-semibold">
-          ← ENTRANCE →
+          &larr; ENTRANCE &rarr;
         </div>
 
         {/* Camera/Lane markers */}
@@ -80,18 +80,14 @@ export function HeatmapView({ data }: HeatmapViewProps) {
           >
             {/* Heat circle */}
             <div
-              className={`w-16 h-16 rounded-full ${getHeatColor(
-                item.flagged_count
-              )} ${getHeatOpacity(
-                item.flagged_count
-              )} blur-sm transition-all group-hover:blur-md group-hover:scale-110`}
+              className={`w-16 h-16 rounded-full ${getHeatColor(item.flagged_count)} ${getHeatOpacity(item.flagged_count)} blur-sm transition-all group-hover:blur-md group-hover:scale-110`}
             />
 
             {/* Camera icon */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="bg-gray-900 border-2 border-gray-700 rounded-lg p-2 group-hover:border-gray-500 transition-colors">
+              <div className="bg-white border-2 border-gray-300 rounded-lg p-2 group-hover:border-blue-400 transition-colors shadow-sm">
                 <svg
-                  className="w-6 h-6 text-gray-400 group-hover:text-gray-200"
+                  className="w-6 h-6 text-gray-500 group-hover:text-blue-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -107,12 +103,12 @@ export function HeatmapView({ data }: HeatmapViewProps) {
             </div>
 
             {/* Tooltip on hover */}
-            <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-              <div className="bg-gray-950 border border-gray-700 rounded-lg p-2 whitespace-nowrap shadow-xl">
-                <div className="text-xs font-mono text-gray-400 mb-1">{item.camera_id}</div>
-                <div className="text-sm font-semibold">{item.lane}</div>
-                <div className="text-xs text-gray-400">
-                  <Badge className="mt-1 bg-red-600/20 text-red-400 border-red-600/50">
+            <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+              <div className="bg-white border border-gray-200 rounded-lg p-2 whitespace-nowrap shadow-lg">
+                <div className="text-xs font-mono text-gray-500 mb-1">{item.camera_id}</div>
+                <div className="text-sm font-semibold text-gray-800">{item.lane}</div>
+                <div className="text-xs">
+                  <Badge className="mt-1 bg-red-50 text-red-700 border-red-200">
                     {item.flagged_count} Flagged Events
                   </Badge>
                 </div>
@@ -122,9 +118,9 @@ export function HeatmapView({ data }: HeatmapViewProps) {
         ))}
 
         {/* Grid lines for reference */}
-        <div className="absolute inset-0 pointer-events-none opacity-10">
-          <div className="w-full h-px bg-gray-600" style={{ top: '33.33%' }} />
-          <div className="w-full h-px bg-gray-600" style={{ top: '66.66%' }} />
+        <div className="absolute inset-0 pointer-events-none opacity-20">
+          <div className="w-full h-px bg-blue-300" style={{ top: '33.33%', position: 'absolute' }} />
+          <div className="w-full h-px bg-blue-300" style={{ top: '66.66%', position: 'absolute' }} />
         </div>
       </div>
     </Card>
