@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Badge } from '@/app/components/ui/badge';
 import {
   Select,
@@ -45,30 +44,24 @@ import {
 import { toast } from 'sonner';
 import { subDays, startOfDay } from 'date-fns';
 
-// Animated counter component
 function AnimatedCount({ value }: { value: number }) {
   const [displayed, setDisplayed] = useState(0);
-
   useEffect(() => {
     if (displayed === value) return;
     const diff = value - displayed;
     const step = Math.max(1, Math.abs(Math.ceil(diff / 15)));
     const timer = setTimeout(() => {
-      setDisplayed(prev => {
-        if (diff > 0) return Math.min(prev + step, value);
-        return Math.max(prev - step, value);
-      });
+      setDisplayed(prev => diff > 0 ? Math.min(prev + step, value) : Math.max(prev - step, value));
     }, 30);
     return () => clearTimeout(timer);
   }, [value, displayed]);
-
   return <>{displayed}</>;
 }
 
 function exportToCSV(transactions: Transaction[]) {
-  const headers = ['Transaction ID', 'Shop ID', 'Cam ID', 'POS ID', 'Cashier Name', 'Timestamp', 'Total (\u20B9)', 'Risk Level', 'Status', 'Triggered Rules'];
+  const headers = ['Transaction ID', 'Shop ID', 'Store Name', 'POS ID', 'Cashier Name', 'Timestamp', 'Total (\u20B9)', 'Risk Level', 'Status', 'Triggered Rules'];
   const rows = transactions.map(t => [
-    t.id, t.shop_id, t.cam_id, t.pos_id, t.cashier_name,
+    t.id, t.shop_id, t.shop_name || '', t.pos_id, t.cashier_name,
     t.timestamp.toISOString(), t.transaction_total.toFixed(2),
     t.risk_level, t.status || 'pending', (t.triggered_rules || []).join('; '),
   ]);
@@ -84,6 +77,16 @@ function exportToCSV(transactions: Transaction[]) {
   URL.revokeObjectURL(url);
 }
 
+const NAV_ITEMS = [
+  { id: 'transactions', label: 'Transactions', icon: LayoutDashboard },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'alerts', label: 'Alerts', icon: Bell },
+  { id: 'scorecard', label: 'Store Scorecard', icon: Users },
+  { id: 'heatmap', label: 'Store Overview', icon: MapIcon },
+  { id: 'streams', label: 'Stream Viewer', icon: Activity },
+  { id: 'settings', label: 'Settings', icon: Settings },
+];
+
 export function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -93,18 +96,12 @@ export function Dashboard() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'high' | 'medium' | 'pending'>('all');
   const [timeRange, setTimeRange] = useState<string>('all');
   const [storeFilter, setStoreFilter] = useState<string>('all');
+  const [storeNames, setStoreNames] = useState<Record<string, string>>({});
   const [isConnected, setIsConnected] = useState(false);
   const [rawVasData, setRawVasData] = useState<any[]>([]);
   const [rawPosData, setRawPosData] = useState<any[]>([]);
-
-  // Store name lookup
-  const [storeNames, setStoreNames] = useState<Record<string, string>>({});
-
-  // Advanced filters
   const [minAmount, setMinAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
-
-  // Transaction detail drawer
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -142,7 +139,6 @@ export function Dashboard() {
 
   const reloadHistoricalData = useCallback(async () => {
     await loadFromLocal();
-    // Sync new bills in background, reload when done
     const base = `http://${window.location.hostname}:8001`;
     fetch(`${base}/api/history?days=10`)
       .then(() => loadFromLocal())
@@ -150,25 +146,16 @@ export function Dashboard() {
   }, [loadFromLocal]);
 
   const reloadAfterConfigChange = useCallback(async () => {
-    // Re-fetch and re-classify from POS API with new thresholds
     try {
       const base = `http://${window.location.hostname}:8001`;
-      // Clear persisted data so history re-classifies everything
       await fetch(`${base}/api/history?days=10`);
-      // Then load the re-classified data
-      const res = await fetch(`${base}/api/transactions`);
-      const data = await res.json();
-      const txns = (data?.transactions || []).map((t: any) => ({ ...t, timestamp: new Date(t.timestamp) }));
-      setTransactions(txns);
-      setAlerts([]);
-      setBillsMap(data?.bills_map || {});
+      await loadFromLocal();
       toast.success('Data re-classified with new thresholds');
     } catch {
       toast.error('Failed to reload data');
     }
-  }, []);
+  }, [loadFromLocal]);
 
-  // Load store names from backend
   useEffect(() => {
     fetch(`http://${window.location.hostname}:8001/api/stores`)
       .then(r => r.json())
@@ -180,10 +167,7 @@ export function Dashboard() {
       .catch(() => {});
   }, []);
 
-  // Load historical data (once on mount)
-  useEffect(() => {
-    reloadHistoricalData();
-  }, [reloadHistoricalData]);
+  useEffect(() => { reloadHistoricalData(); }, [reloadHistoricalData]);
 
   useEffect(() => {
     const ws = new WebSocket(`ws://${window.location.hostname}:8001/ws`);
@@ -207,13 +191,8 @@ export function Dashboard() {
     return () => { ws.close(); };
   }, []);
 
-  const handleRefresh = () => { toast.success('Dashboard refreshed'); };
+  const handleFilterChange = (filter: 'all' | 'high' | 'medium' | 'pending') => { setActiveFilter(filter); };
 
-  const handleFilterChange = (filter: 'all' | 'high' | 'medium' | 'pending') => {
-    setActiveFilter(filter);
-  };
-
-  // Time-range filtered transactions
   const timeFilteredTransactions = useMemo(() => {
     if (timeRange === 'all') return transactions;
     const now = new Date();
@@ -227,13 +206,10 @@ export function Dashboard() {
     return transactions.filter(t => t.timestamp >= cutoff);
   }, [transactions, timeRange]);
 
-  // Unique stores for filter dropdown
   const uniqueStores = useMemo(() => {
     const map = new Map<string, string>();
     transactions.forEach(t => {
-      if (!map.has(t.shop_id)) {
-        map.set(t.shop_id, t.shop_name || storeNames[t.shop_id] || t.shop_id);
-      }
+      if (!map.has(t.shop_id)) map.set(t.shop_id, t.shop_name || storeNames[t.shop_id] || t.shop_id);
     });
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [transactions, storeNames]);
@@ -241,254 +217,193 @@ export function Dashboard() {
   const filteredTransactions = useMemo(() => {
     const search = searchTerm.toLowerCase();
     let filtered = timeFilteredTransactions;
-
     if (search) {
       filtered = filtered.filter(t =>
-        t.id.toLowerCase().includes(search) ||
-        t.cashier_name.toLowerCase().includes(search) ||
-        t.shop_id.toLowerCase().includes(search) ||
-        (t.shop_name || '').toLowerCase().includes(search)
+        t.id.toLowerCase().includes(search) || t.cashier_name.toLowerCase().includes(search) ||
+        t.shop_id.toLowerCase().includes(search) || (t.shop_name || '').toLowerCase().includes(search)
       );
     }
-
     if (storeFilter !== 'all') filtered = filtered.filter(t => t.shop_id === storeFilter);
-
     if (activeFilter === 'high') filtered = filtered.filter(t => t.risk_level === 'High');
     else if (activeFilter === 'medium') filtered = filtered.filter(t => t.risk_level === 'Medium');
     else if (activeFilter === 'pending') filtered = filtered.filter(t => !t.status || t.status === 'pending');
-
-    const min = parseFloat(minAmount);
-    const max = parseFloat(maxAmount);
+    const min = parseFloat(minAmount); const max = parseFloat(maxAmount);
     if (!isNaN(min)) filtered = filtered.filter(t => t.transaction_total >= min);
     if (!isNaN(max)) filtered = filtered.filter(t => t.transaction_total <= max);
-
     return filtered;
   }, [timeFilteredTransactions, searchTerm, storeFilter, activeFilter, minAmount, maxAmount]);
 
-  // Pagination
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
-  const paginatedTransactions = useMemo(() =>
-    filteredTransactions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
-    [filteredTransactions, page]
-  );
+  const paginatedTransactions = useMemo(() => filteredTransactions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [filteredTransactions, page]);
   const totalPages = Math.ceil(filteredTransactions.length / PAGE_SIZE);
-
-  // Reset page when filters change
   useEffect(() => { setPage(0); }, [searchTerm, storeFilter, activeFilter, timeRange, minAmount, maxAmount]);
+
   const highCount = timeFilteredTransactions.filter(t => t.risk_level === 'High').length;
   const mediumCount = timeFilteredTransactions.filter(t => t.risk_level === 'Medium').length;
   const openAlertCount = alerts.filter(a => a.status === 'new' || a.status === 'Fraudulent' || a.status === 'Pending for review').length;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-blue-800 px-4 py-2 shadow-lg">
-        <div className="flex items-center justify-between mb-2">
+    <div className="h-screen flex bg-gray-50">
+      {/* Sidebar */}
+      <div className="w-56 bg-white border-r border-gray-200 flex flex-col shadow-sm">
+        {/* Logo */}
+        <div className="px-4 py-3 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-white/20 rounded-md backdrop-blur-sm">
+            <div className="p-1.5 bg-blue-600 rounded-lg">
               <Shield className="h-4 w-4 text-white" />
             </div>
-            <h1 className="text-base font-bold text-white">Retail Trust & Security</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs border-white/30 text-white hover:bg-white/10 bg-transparent" onClick={handleRefresh}>
-              <RefreshCw className="h-3 w-3" /> Refresh
-            </Button>
-            <div className={`flex items-center gap-1.5 px-2 py-1 border rounded-md backdrop-blur-sm text-xs ${isConnected ? 'bg-green-500/20 border-green-300/50' : 'bg-red-500/20 border-red-300/50'}`}>
-              <div className={`h-1.5 w-1.5 rounded-full animate-pulse ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
-              <span className={`font-semibold ${isConnected ? 'text-green-100' : 'text-red-100'}`}>
-                {isConnected ? 'Live' : 'Offline'}
-              </span>
+            <div>
+              <h1 className="text-sm font-bold text-gray-800">Retail Trust</h1>
+              <p className="text-[10px] text-gray-400">Security Dashboard</p>
             </div>
           </div>
         </div>
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-4 gap-3">
-          <Card className={`bg-white/10 backdrop-blur-sm border-white/20 px-3 py-2 cursor-pointer transition-all hover:bg-white/20 ${activeFilter === 'all' ? 'ring-2 ring-white/50' : ''}`} onClick={() => handleFilterChange('all')}>
-            <div className="flex items-center gap-2">
-              <LayoutDashboard className="h-4 w-4 text-blue-200" />
-              <div>
-                <div className="text-xs text-blue-100">Transactions</div>
-                <div className="text-lg font-bold text-white leading-tight"><AnimatedCount value={timeFilteredTransactions.length} /></div>
-              </div>
-            </div>
-          </Card>
-          <Card className={`bg-red-500/20 backdrop-blur-sm border-red-300/30 px-3 py-2 cursor-pointer transition-all hover:bg-red-500/30 ${activeFilter === 'high' ? 'ring-2 ring-red-300' : ''}`} onClick={() => handleFilterChange('high')}>
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="h-4 w-4 text-red-200" />
-              <div>
-                <div className="text-xs text-red-200">High Risk</div>
-                <div className="text-lg font-bold text-white leading-tight"><AnimatedCount value={highCount} /></div>
-              </div>
-            </div>
-          </Card>
-          <Card className={`bg-amber-500/20 backdrop-blur-sm border-amber-300/30 px-3 py-2 cursor-pointer transition-all hover:bg-amber-500/30 ${activeFilter === 'medium' ? 'ring-2 ring-amber-300' : ''}`} onClick={() => handleFilterChange('medium')}>
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-200" />
-              <div>
-                <div className="text-xs text-amber-200">Medium Risk</div>
-                <div className="text-lg font-bold text-white leading-tight"><AnimatedCount value={mediumCount} /></div>
-              </div>
-            </div>
-          </Card>
-          <Card className={`bg-white/10 backdrop-blur-sm border-white/20 px-3 py-2 cursor-pointer transition-all hover:bg-white/20`} onClick={() => setActiveTab('alerts')}>
-            <div className="flex items-center gap-2">
-              <Bell className="h-4 w-4 text-blue-200" />
-              <div>
-                <div className="text-xs text-blue-100">Open Alerts</div>
-                <div className="text-lg font-bold text-white leading-tight"><AnimatedCount value={openAlertCount} /></div>
-              </div>
-            </div>
-          </Card>
+        {/* Navigation */}
+        <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
+          {NAV_ITEMS.map(item => {
+            const isActive = activeTab === item.id;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                }`}
+              >
+                <Icon className={`h-4 w-4 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
+                {item.label}
+                {item.id === 'alerts' && openAlertCount > 0 && (
+                  <Badge className="ml-auto bg-red-100 text-red-700 border-red-200 text-[10px] px-1.5 py-0">
+                    {openAlertCount}
+                  </Badge>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Connection Status */}
+        <div className="px-3 py-3 border-t border-gray-100">
+          <div className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs ${isConnected ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+            <div className={`h-1.5 w-1.5 rounded-full animate-pulse ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+            {isConnected ? 'System Active' : 'Disconnected'}
+          </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 overflow-auto">
-          <div className="p-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="bg-white border border-gray-200 mb-6 shadow-sm">
-                <TabsTrigger value="transactions" className="gap-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
-                  <LayoutDashboard className="h-4 w-4" /> Transactions
-                </TabsTrigger>
-                <TabsTrigger value="analytics" className="gap-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
-                  <BarChart3 className="h-4 w-4" /> Analytics
-                </TabsTrigger>
-                <TabsTrigger value="alerts" className="gap-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
-                  <Bell className="h-4 w-4" /> Alerts
-                  {alerts.filter(a => a.status === 'new' || a.status === 'Fraudulent' || a.status === 'Pending for review').length > 0 && (
-                    <Badge className="ml-1 bg-red-100 text-red-700 border-red-200 text-xs">
-                      {alerts.filter(a => a.status === 'new' || a.status === 'Fraudulent' || a.status === 'Pending for review').length}
+      {/* Main Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Bar with Stats */}
+        <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-blue-800 px-5 py-2.5 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 flex-1">
+              <Card className={`bg-white/10 backdrop-blur-sm border-white/20 px-3 py-1.5 cursor-pointer transition-all hover:bg-white/20 ${activeFilter === 'all' ? 'ring-1 ring-white/50' : ''}`} onClick={() => handleFilterChange('all')}>
+                <div className="flex items-center gap-2">
+                  <LayoutDashboard className="h-3.5 w-3.5 text-blue-200" />
+                  <span className="text-xs text-blue-100">Transactions</span>
+                  <span className="text-sm font-bold text-white"><AnimatedCount value={timeFilteredTransactions.length} /></span>
+                </div>
+              </Card>
+              <Card className={`bg-red-500/20 backdrop-blur-sm border-red-300/30 px-3 py-1.5 cursor-pointer transition-all hover:bg-red-500/30 ${activeFilter === 'high' ? 'ring-1 ring-red-300' : ''}`} onClick={() => handleFilterChange('high')}>
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="h-3.5 w-3.5 text-red-200" />
+                  <span className="text-xs text-red-200">High Risk</span>
+                  <span className="text-sm font-bold text-white"><AnimatedCount value={highCount} /></span>
+                </div>
+              </Card>
+              <Card className={`bg-amber-500/20 backdrop-blur-sm border-amber-300/30 px-3 py-1.5 cursor-pointer transition-all hover:bg-amber-500/30 ${activeFilter === 'medium' ? 'ring-1 ring-amber-300' : ''}`} onClick={() => handleFilterChange('medium')}>
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-200" />
+                  <span className="text-xs text-amber-200">Medium Risk</span>
+                  <span className="text-sm font-bold text-white"><AnimatedCount value={mediumCount} /></span>
+                </div>
+              </Card>
+              <Card className="bg-white/10 backdrop-blur-sm border-white/20 px-3 py-1.5 cursor-pointer transition-all hover:bg-white/20" onClick={() => setActiveTab('alerts')}>
+                <div className="flex items-center gap-2">
+                  <Bell className="h-3.5 w-3.5 text-blue-200" />
+                  <span className="text-xs text-blue-100">Alerts</span>
+                  <span className="text-sm font-bold text-white"><AnimatedCount value={openAlertCount} /></span>
+                </div>
+              </Card>
+            </div>
+            <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs border-white/30 text-white hover:bg-white/10 bg-transparent" onClick={() => { reloadHistoricalData(); toast.success('Refreshing...'); }}>
+              <RefreshCw className="h-3 w-3" /> Refresh
+            </Button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-5">
+          {activeTab === 'transactions' && (
+            <div className="space-y-4">
+              <Card className="bg-white border-gray-200 p-3 shadow-sm">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="relative flex-1 min-w-[200px]">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input placeholder="Search by ID, Cashier, or Store..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10 bg-gray-50 border-gray-200 h-9" />
+                  </div>
+                  {activeFilter !== 'all' && (
+                    <Badge variant="outline" className="gap-1 cursor-pointer hover:bg-gray-50 text-gray-700 border-gray-300 text-xs" onClick={() => handleFilterChange('all')}>
+                      {activeFilter === 'high' ? 'High Risk' : activeFilter === 'medium' ? 'Medium Risk' : 'Pending'}
+                      <span>✕</span>
                     </Badge>
                   )}
-                </TabsTrigger>
-                <TabsTrigger value="employees" className="gap-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
-                  <Users className="h-4 w-4" /> Store Scorecard
-                </TabsTrigger>
-                <TabsTrigger value="heatmap" className="gap-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
-                  <MapIcon className="h-4 w-4" /> Store Heatmap
-                </TabsTrigger>
-                <TabsTrigger value="streams" className="gap-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
-                  <Activity className="h-4 w-4" /> Stream Viewer
-                </TabsTrigger>
-                <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
-                  <Settings className="h-4 w-4" /> Settings
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="transactions" className="space-y-4">
-                {/* Search, Filters, Time Range, Amount Range, Export */}
-                <Card className="bg-white border-gray-200 p-4 shadow-sm">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className="relative flex-1 min-w-[200px]">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input placeholder="Search by ID, Cashier, or Shop..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10 bg-gray-50 border-gray-200" />
-                    </div>
-                    {activeFilter !== 'all' && (
-                      <Badge variant="outline" className="gap-2 cursor-pointer hover:bg-gray-50 text-gray-700 border-gray-300" onClick={() => handleFilterChange('all')}>
-                        {activeFilter === 'high' && 'High Risk'}
-                        {activeFilter === 'medium' && 'Medium Risk'}
-                        {activeFilter === 'pending' && 'Pending Review'}
-                        <span className="text-xs">✕</span>
-                      </Badge>
-                    )}
-                    <Select value={timeRange} onValueChange={setTimeRange}>
-                      <SelectTrigger className="w-[130px] bg-white border-gray-200">
-                        <SelectValue placeholder="Time range" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Time</SelectItem>
-                        <SelectItem value="today">Today</SelectItem>
-                        <SelectItem value="2days">Last 2 Days</SelectItem>
-                        <SelectItem value="week">Last Week</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={storeFilter} onValueChange={setStoreFilter}>
-                      <SelectTrigger className="w-[160px] bg-white border-gray-200">
-                        <SelectValue placeholder="All Stores" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Stores</SelectItem>
-                        {uniqueStores.map(([id, name]) => (
-                          <SelectItem key={id} value={id}>{name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex items-center gap-1">
-                      <Input type="number" placeholder="Min ₹" value={minAmount} onChange={e => setMinAmount(e.target.value)} className="w-[90px] bg-gray-50 border-gray-200 text-sm" />
-                      <span className="text-gray-400 text-xs">-</span>
-                      <Input type="number" placeholder="Max ₹" value={maxAmount} onChange={e => setMaxAmount(e.target.value)} className="w-[90px] bg-gray-50 border-gray-200 text-sm" />
-                    </div>
-                    <Button variant="outline" className="gap-2 border-gray-200" onClick={() => { handleFilterChange('all'); setMinAmount(''); setMaxAmount(''); setSearchTerm(''); setTimeRange('all'); setStoreFilter('all'); }}>
-                      <Filter className="h-4 w-4" /> Clear
-                    </Button>
-                    <Button variant="outline" className="gap-2 border-gray-200 text-blue-600 hover:bg-blue-50" onClick={() => { exportToCSV(filteredTransactions); toast.success(`Exported ${filteredTransactions.length} transactions`); }}>
-                      <Download className="h-4 w-4" /> CSV
-                    </Button>
+                  <Select value={timeRange} onValueChange={setTimeRange}>
+                    <SelectTrigger className="w-[120px] bg-white border-gray-200 h-9 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Time</SelectItem>
+                      <SelectItem value="today">Today</SelectItem>
+                      <SelectItem value="2days">Last 2 Days</SelectItem>
+                      <SelectItem value="week">Last Week</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={storeFilter} onValueChange={setStoreFilter}>
+                    <SelectTrigger className="w-[150px] bg-white border-gray-200 h-9 text-xs"><SelectValue placeholder="All Stores" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Stores</SelectItem>
+                      {uniqueStores.map(([id, name]) => (
+                        <SelectItem key={id} value={id}>{name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex items-center gap-1">
+                    <Input type="number" placeholder="Min ₹" value={minAmount} onChange={e => setMinAmount(e.target.value)} className="w-[80px] bg-gray-50 border-gray-200 text-xs h-9" />
+                    <span className="text-gray-300">-</span>
+                    <Input type="number" placeholder="Max ₹" value={maxAmount} onChange={e => setMaxAmount(e.target.value)} className="w-[80px] bg-gray-50 border-gray-200 text-xs h-9" />
                   </div>
-                </Card>
-
-                <TransactionTable transactions={paginatedTransactions} onRowClick={handleRowClick} />
-
-                {/* Pagination */}
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <span>
-                    Showing {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, filteredTransactions.length)} of {filteredTransactions.length} transactions
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page === 0}
-                      onClick={() => setPage(p => p - 1)}
-                      className="border-gray-200 h-8"
-                    >
-                      Previous
-                    </Button>
-                    <span className="text-gray-600 font-medium">
-                      Page {page + 1} of {totalPages || 1}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page >= totalPages - 1}
-                      onClick={() => setPage(p => p + 1)}
-                      className="border-gray-200 h-8"
-                    >
-                      Next
-                    </Button>
-                  </div>
+                  <Button variant="outline" size="sm" className="gap-1 border-gray-200 h-9 text-xs" onClick={() => { handleFilterChange('all'); setMinAmount(''); setMaxAmount(''); setSearchTerm(''); setTimeRange('all'); setStoreFilter('all'); }}>
+                    <Filter className="h-3 w-3" /> Clear
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-1 border-gray-200 text-blue-600 hover:bg-blue-50 h-9 text-xs" onClick={() => { exportToCSV(filteredTransactions); toast.success(`Exported ${filteredTransactions.length} transactions`); }}>
+                    <Download className="h-3 w-3" /> CSV
+                  </Button>
                 </div>
-              </TabsContent>
+              </Card>
 
-              <TabsContent value="analytics">
-                <AnalyticsView transactions={timeFilteredTransactions} />
-              </TabsContent>
+              <TransactionTable transactions={paginatedTransactions} onRowClick={handleRowClick} />
 
-              <TabsContent value="alerts">
-                <AlertWorkflow alerts={alerts} setAlerts={setAlerts} transactions={transactions} />
-              </TabsContent>
+              <div className="flex items-center justify-between text-sm text-gray-500">
+                <span>Showing {filteredTransactions.length > 0 ? page * PAGE_SIZE + 1 : 0}-{Math.min((page + 1) * PAGE_SIZE, filteredTransactions.length)} of {filteredTransactions.length}</span>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)} className="border-gray-200 h-7 text-xs">Previous</Button>
+                  <span className="text-gray-600 text-xs font-medium">Page {page + 1} of {totalPages || 1}</span>
+                  <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)} className="border-gray-200 h-7 text-xs">Next</Button>
+                </div>
+              </div>
+            </div>
+          )}
 
-              <TabsContent value="employees">
-                <EmployeeScorecardView transactions={timeFilteredTransactions} storeNames={storeNames} />
-              </TabsContent>
-
-              <TabsContent value="heatmap">
-                <HeatmapView transactions={timeFilteredTransactions} storeNames={storeNames} />
-              </TabsContent>
-
-              <TabsContent value="streams">
-                <StreamViewer vasData={rawVasData} posData={rawPosData} />
-              </TabsContent>
-
-              <TabsContent value="settings">
-                <SettingsPanel onConfigSaved={reloadAfterConfigChange} />
-              </TabsContent>
-            </Tabs>
-          </div>
+          {activeTab === 'analytics' && <AnalyticsView transactions={timeFilteredTransactions} />}
+          {activeTab === 'alerts' && <AlertWorkflow alerts={alerts} setAlerts={setAlerts} transactions={transactions} />}
+          {activeTab === 'scorecard' && <EmployeeScorecardView transactions={timeFilteredTransactions} storeNames={storeNames} />}
+          {activeTab === 'heatmap' && <HeatmapView transactions={timeFilteredTransactions} storeNames={storeNames} />}
+          {activeTab === 'streams' && <StreamViewer vasData={rawVasData} posData={rawPosData} />}
+          {activeTab === 'settings' && <SettingsPanel onConfigSaved={reloadAfterConfigChange} />}
         </div>
       </div>
 
