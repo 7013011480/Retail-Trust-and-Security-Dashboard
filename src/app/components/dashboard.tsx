@@ -25,25 +25,29 @@ import { EmployeeScorecardView } from '@/app/components/employee-scorecard-view'
 import { HeatmapView } from '@/app/components/heatmap-view';
 import {
   mockHeatmapData,
-  generateHistoricalTransactions,
-  generateHistoricalAlerts,
+  loadHistoricalData,
   Transaction,
   Alert,
 } from '@/lib/mock-data';
 import { toast } from 'sonner';
 
-const initialTransactions = generateHistoricalTransactions();
-const initialAlerts = generateHistoricalAlerts(initialTransactions);
-
 export function Dashboard() {
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
-  const [alerts, setAlerts] = useState<Alert[]>(initialAlerts);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('transactions');
   const [activeFilter, setActiveFilter] = useState<'all' | 'high' | 'medium' | 'pending'>('all');
   const [isConnected, setIsConnected] = useState(false);
   const [rawVasData, setRawVasData] = useState<any[]>([]);
   const [rawPosData, setRawPosData] = useState<any[]>([]);
+
+  // Load historical data from JSON file
+  useEffect(() => {
+    loadHistoricalData().then(({ transactions: hist, alerts: histAlerts }) => {
+      setTransactions(prev => [...prev, ...hist]);
+      setAlerts(prev => [...prev, ...histAlerts]);
+    });
+  }, []);
 
   useEffect(() => {
     const ws = new WebSocket(`ws://${window.location.hostname}:8001/ws`);

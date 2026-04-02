@@ -1,4 +1,4 @@
-// Mock data for the Retail Trust & Security Dashboard
+// Data types and processing for the Retail Trust & Security Dashboard
 
 export interface Transaction {
   id: string;
@@ -13,15 +13,6 @@ export interface Transaction {
   status?: 'genuine' | 'fraudulent' | 'suspicious' | 'pending';
   fraud_category?: string;
   notes?: string;
-}
-
-export interface ReceiptItem {
-  id: string;
-  name: string;
-  quantity: number;
-  price: number;
-  timestamp_offset: number;
-  scanned: boolean;
 }
 
 export interface Alert {
@@ -43,130 +34,105 @@ export interface HeatmapData {
   flagged_count: number;
 }
 
-// Store and camera mappings matching the real backend
-const STORES = [
-  { id: 'NDCIN1223', cams: ['NDCIN1223_IN001_01'], pos: ['POS 3'] },
-  { id: 'NSCIN8227', cams: ['NSCIN8227_CAM-02_W2'], pos: ['POS4'] },
-  { id: 'NDCIN1227', cams: ['NDCIN1227_IN001_01'], pos: ['POS 2'] },
-];
+// Camera mapping (same as backend mapping.json)
+const CAMERA_MAP: Record<string, string> = {
+  'NDCIN1223_POS 3': 'NDCIN1223_IN001_01',
+  'NSCIN8227_POS4': 'NSCIN8227_CAM-02_W2',
+  'NDCIN1227_POS 2': 'NDCIN1227_IN001_01',
+};
 
-const RULES = [
-  { name: 'Payment Mode Mismatch', risk: 'High' as const, status: 'fraudulent' as const },
-  { name: 'Corresponding VAS data not found', risk: 'High' as const, status: 'fraudulent' as const },
-  { name: 'Corresponding POS data not found', risk: 'High' as const, status: 'fraudulent' as const },
-  { name: 'Bill not generated', risk: 'Medium' as const, status: 'suspicious' as const },
-  { name: 'High Discount', risk: 'Medium' as const, status: 'suspicious' as const },
-  { name: 'Refund Processed', risk: 'Medium' as const, status: 'suspicious' as const },
-  { name: 'Complementary Order', risk: 'Medium' as const, status: 'suspicious' as const },
-];
+/**
+ * Process raw API bills into classified transactions.
+ * Applies POS-only fraud rules (same logic as backend fraud_engine).
+ */
+export function processBillsToTransactions(bills: any[]): Transaction[] {
+  return bills.map((bill, i) => {
+    const storeId = bill.ndcin || 'Unknown';
+    const posId = bill.terminalName || 'Unknown';
+    const camId = CAMERA_MAP[`${storeId}_${posId}`] || 'Unknown';
+    const totalAmt = parseFloat(bill.actualBillAmt || 0);
+    const discAmt = parseFloat(bill.discAmt || 0);
+    const returnAmt = parseFloat(bill.returnAmt || 0);
+    const discountPercent = totalAmt > 0 && discAmt > 0 ? (discAmt / totalAmt) * 100 : 0;
 
-function seededRandom(seed: number) {
-  let s = seed;
-  return () => {
-    s = (s * 16807 + 0) % 2147483647;
-    return s / 2147483647;
-  };
-}
+    const triggeredRules: string[] = [];
 
-export function generateHistoricalTransactions(): Transaction[] {
-  const rand = seededRandom(42);
-  const transactions: Transaction[] = [];
-  const now = Date.now();
-  const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
-
-  for (let i = 0; i < 80; i++) {
-    const store = STORES[Math.floor(rand() * STORES.length)];
-    const timeOffset = rand() * FIVE_DAYS;
-    const timestamp = new Date(now - timeOffset);
-
-    // Distribution: ~70% Low, ~20% Medium, ~10% High
-    const roll = rand();
-    let riskLevel: 'High' | 'Medium' | 'Low';
-    let status: 'genuine' | 'fraudulent' | 'suspicious' | 'pending';
-    let triggeredRules: string[] = [];
-    let fraudCategory: string | undefined;
-
-    if (roll < 0.10) {
-      // High risk
-      const highRules = RULES.filter(r => r.risk === 'High');
-      const rule = highRules[Math.floor(rand() * highRules.length)];
-      riskLevel = 'High';
-      status = 'fraudulent';
-      triggeredRules = [rule.name];
-      fraudCategory = rule.name;
-    } else if (roll < 0.30) {
-      // Medium risk
-      const mediumRules = RULES.filter(r => r.risk === 'Medium');
-      const rule = mediumRules[Math.floor(rand() * mediumRules.length)];
-      riskLevel = 'Medium';
-      status = 'suspicious';
-      triggeredRules = [rule.name];
-      fraudCategory = rule.name;
-    } else {
-      // Low risk
-      riskLevel = 'Low';
-      status = 'genuine';
+    // Rule: High Discount (>20%)
+    if (discountPercent > 20) {
+      triggeredRules.push(`High Discount (${discountPercent.toFixed(1)}%)`);
     }
 
-    const total = Math.round((100 + rand() * 4900) * 100) / 100; // ₹100 - ₹5000
+    // Rule: Refund Processed
+    if (returnAmt > 0) {
+      triggeredRules.push(`Refund Processed (Rs.${returnAmt})`);
+    }
 
-    transactions.push({
-      id: `TXN-HIST-${String(i + 1).padStart(3, '0')}`,
-      shop_id: store.id,
-      cam_id: store.cams[0],
-      pos_id: store.pos[0],
-      cashier_name: 'Unknown',
+    // Rule: Complementary Order
+    if (bill.isComplementary === 'Yes') {
+      triggeredRules.push('Complementary Order');
+    }
+
+    // Determine risk level
+    let riskLevel: 'High' | 'Medium' | 'Low' = 'Low';
+    let status: 'genuine' | 'fraudulent' | 'suspicious' | 'pending' = 'genuine';
+
+    if (triggeredRules.length > 0) {
+      riskLevel = 'Medium';
+      status = 'suspicious';
+    }
+
+    const timestamp = new Date(`${bill.billDate}T${bill.billTime}`);
+
+    return {
+      id: `TXN-${bill.billNo || String(i + 1).padStart(3, '0')}`,
+      shop_id: storeId,
+      cam_id: camId,
+      pos_id: posId,
+      cashier_name: bill.cashierName || 'Unknown',
       timestamp,
-      transaction_total: total,
+      transaction_total: totalAmt,
       risk_level: riskLevel,
       triggered_rules: triggeredRules.length > 0 ? triggeredRules : undefined,
       status,
-      fraud_category: fraudCategory,
-    });
-  }
-
-  // Sort by timestamp descending (most recent first)
-  transactions.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-  return transactions;
+      fraud_category: triggeredRules[0] || undefined,
+    };
+  }).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 }
 
-export function generateHistoricalAlerts(transactions?: Transaction[]): Alert[] {
-  const txns = transactions ?? generateHistoricalTransactions();
-  const alerts: Alert[] = [];
+export function generateAlertsFromTransactions(transactions: Transaction[]): Alert[] {
+  const flagged = transactions.filter(t => t.risk_level !== 'Low');
 
-  const flagged = txns.filter(t => t.risk_level !== 'Low');
-
-  flagged.forEach((t, i) => {
+  return flagged.map((t, i) => {
     const statusOptions: Alert['status'][] = ['resolved', 'Genuine', 'Fraudulent'];
-    // Most historical alerts are resolved
-    const status = statusOptions[i % statusOptions.length];
-
-    alerts.push({
-      id: `ALT-HIST-${String(i + 1).padStart(3, '0')}`,
+    return {
+      id: `ALT-${String(i + 1).padStart(3, '0')}`,
       transaction_id: t.id,
       shop_id: t.shop_id,
       cashier_name: t.cashier_name,
       risk_level: t.risk_level,
       triggered_rules: t.triggered_rules,
       timestamp: t.timestamp,
-      status,
-    });
+      status: statusOptions[i % statusOptions.length],
+    };
   });
-
-  return alerts;
 }
 
-// Mock receipt items for a transaction
-export const mockReceiptItems: ReceiptItem[] = [
-  { id: 'ITEM-001', name: 'Organic Bananas (2 lbs)', quantity: 1, price: 3.99, timestamp_offset: 5, scanned: true },
-  { id: 'ITEM-002', name: 'Whole Milk (1 Gallon)', quantity: 1, price: 4.29, timestamp_offset: 12, scanned: true },
-  { id: 'ITEM-003', name: 'Premium Steak (1.5 lbs)', quantity: 1, price: 24.99, timestamp_offset: 18, scanned: false },
-  { id: 'ITEM-004', name: 'Bread Loaf', quantity: 2, price: 5.98, timestamp_offset: 25, scanned: true },
-  { id: 'ITEM-005', name: 'Fresh Lettuce', quantity: 1, price: 2.49, timestamp_offset: 32, scanned: true },
-  { id: 'ITEM-006', name: 'Orange Juice (64 oz)', quantity: 1, price: 6.79, timestamp_offset: 38, scanned: true },
-  { id: 'ITEM-007', name: 'Cheese Block (8 oz)', quantity: 1, price: 7.99, timestamp_offset: 45, scanned: true },
-  { id: 'ITEM-008', name: 'Pasta Package', quantity: 3, price: 8.97, timestamp_offset: 52, scanned: true },
-];
+/**
+ * Fetch historical bills from the JSON file in public/ and process them.
+ */
+export async function loadHistoricalData(): Promise<{ transactions: Transaction[]; alerts: Alert[] }> {
+  try {
+    const response = await fetch('/historical-data.json');
+    const data = await response.json();
+    const bills = data?.data?.bills || [];
+    const transactions = processBillsToTransactions(bills);
+    const alerts = generateAlertsFromTransactions(transactions);
+    return { transactions, alerts };
+  } catch (error) {
+    console.error('Failed to load historical data:', error);
+    return { transactions: [], alerts: [] };
+  }
+}
 
 // Mock heatmap data
 export const mockHeatmapData: HeatmapData[] = [
@@ -180,17 +146,4 @@ export const mockHeatmapData: HeatmapData[] = [
   { camera_id: 'CAM-03-A', lane: 'Lane 1', x: 10, y: 85, flagged_count: 31 },
   { camera_id: 'CAM-03-B', lane: 'Lane 2', x: 30, y: 85, flagged_count: 11 },
   { camera_id: 'CAM-03-C', lane: 'Lane 3', x: 50, y: 85, flagged_count: 9 },
-];
-
-// Video event markers (timestamps in seconds)
-export const mockVideoMarkers = [
-  { time: 5, label: 'Item 1 Scanned', type: 'normal' },
-  { time: 12, label: 'Item 2 Scanned', type: 'normal' },
-  { time: 18, label: 'SUSPICIOUS: Item Bypassed', type: 'fraud' },
-  { time: 25, label: 'Item 4 Scanned', type: 'normal' },
-  { time: 32, label: 'Item 5 Scanned', type: 'normal' },
-  { time: 38, label: 'Item 6 Scanned', type: 'normal' },
-  { time: 45, label: 'Item 7 Scanned', type: 'normal' },
-  { time: 52, label: 'Item 8 Scanned', type: 'normal' },
-  { time: 60, label: 'Payment Complete', type: 'normal' },
 ];
