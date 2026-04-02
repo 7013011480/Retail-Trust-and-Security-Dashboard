@@ -14,10 +14,9 @@ import { Transaction } from '@/lib/mock-data';
 
 interface TransactionTableProps {
   transactions: Transaction[];
-  onWatchFootage: (transactionId: string) => void;
 }
 
-export function TransactionTable({ transactions, onWatchFootage }: TransactionTableProps) {
+export function TransactionTable({ transactions }: TransactionTableProps) {
 
   const getStatusBadge = (status?: string) => {
     if (!status || status === 'pending') {
@@ -86,8 +85,8 @@ export function TransactionTable({ transactions, onWatchFootage }: TransactionTa
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-2 border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                  onClick={() => onWatchFootage(transaction.id)}
+                  disabled
+                  className="gap-2 border-gray-200 text-gray-400 cursor-not-allowed"
                 >
                   <Video className="h-4 w-4" />
                   Watch Footage

@@ -19,15 +19,11 @@ import {
   Clock,
 } from 'lucide-react';
 import { TransactionTable } from '@/app/components/transaction-table';
-import { LiveAlertFeed } from '@/app/components/live-alert-feed';
-import { VideoPlaybackView } from '@/app/components/video-playback-view';
 import { StreamViewer } from '@/app/components/stream-viewer';
 import { AnalyticsView } from '@/app/components/analytics-view';
 import { EmployeeScorecardView } from '@/app/components/employee-scorecard-view';
 import { HeatmapView } from '@/app/components/heatmap-view';
 import {
-  mockVideoMarkers,
-  mockReceiptItems,
   mockHeatmapData,
   generateHistoricalTransactions,
   generateHistoricalAlerts,
@@ -40,8 +36,6 @@ const initialTransactions = generateHistoricalTransactions();
 const initialAlerts = generateHistoricalAlerts(initialTransactions);
 
 export function Dashboard() {
-  const [activeView, setActiveView] = useState<'dashboard' | 'video'>('dashboard');
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [alerts, setAlerts] = useState<Alert[]>(initialAlerts);
   const [searchTerm, setSearchTerm] = useState('');
@@ -107,42 +101,6 @@ export function Dashboard() {
     };
   }, []);
 
-  const handleWatchFootage = (transactionId: string) => {
-    const transaction = transactions.find((t) => t.id === transactionId);
-    if (transaction) {
-      setSelectedTransaction(transaction);
-      setActiveView('video');
-    }
-  };
-
-  const handleViewAlert = (transactionId: string) => {
-    handleWatchFootage(transactionId);
-  };
-
-  const handleDismissAlert = (alertId: string) => {
-    setAlerts((prev) => prev.filter((alert) => alert.id !== alertId));
-    toast.info('Alert dismissed');
-  };
-
-  const handleSubmitDecision = async (
-    transaction_id: string,
-    status: string,
-    category: string,
-    notes: string
-  ) => {
-    const fullNotes = category ? `[${category}] ${notes}` : notes;
-    try {
-      await fetch(`http://${window.location.hostname}:8001/api/admin/validate?transaction_id=${transaction_id}&decision=${status}&notes=${encodeURIComponent(fullNotes)}`, {
-        method: 'POST'
-      });
-      toast.success(`Decision submitted: ${status}`);
-      setActiveView('dashboard');
-    } catch (error) {
-      console.error("Error submitting decision", error);
-      toast.error("Failed to submit decision to server");
-    }
-  };
-
   const handleRefresh = () => {
     toast.success('Dashboard refreshed');
   };
@@ -181,18 +139,6 @@ export function Dashboard() {
   };
 
   const filteredTransactions = getFilteredTransactions();
-
-  if (activeView === 'video' && selectedTransaction) {
-    return (
-      <VideoPlaybackView
-        transaction={selectedTransaction}
-        receiptItems={mockReceiptItems}
-        videoMarkers={mockVideoMarkers}
-        onBack={() => setActiveView('dashboard')}
-        onSubmitDecision={handleSubmitDecision}
-      />
-    );
-  }
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -365,7 +311,6 @@ export function Dashboard() {
                 {/* Transaction Table */}
                 <TransactionTable
                   transactions={filteredTransactions}
-                  onWatchFootage={handleWatchFootage}
                 />
 
                 {/* Results count */}
@@ -394,14 +339,6 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Live Alerts Sidebar */}
-        <div className="w-96 border-l border-gray-200 bg-white p-4 flex flex-col overflow-hidden shadow-inner">
-          <LiveAlertFeed
-            alerts={alerts}
-            onViewAlert={handleViewAlert}
-            onDismissAlert={handleDismissAlert}
-          />
-        </div>
       </div>
     </div>
   );
