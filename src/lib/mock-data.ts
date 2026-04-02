@@ -120,17 +120,25 @@ export function generateAlertsFromTransactions(transactions: Transaction[]): Ale
 /**
  * Fetch historical bills from the JSON file in public/ and process them.
  */
-export async function loadHistoricalData(): Promise<{ transactions: Transaction[]; alerts: Alert[] }> {
+export async function loadHistoricalData(): Promise<{ transactions: Transaction[]; alerts: Alert[]; billsMap: Record<string, any> }> {
   try {
     const response = await fetch('/historical-data.json');
     const data = await response.json();
     const bills = data?.data?.bills || [];
     const transactions = processBillsToTransactions(bills);
     const alerts = generateAlertsFromTransactions(transactions);
-    return { transactions, alerts };
+
+    // Build a map of transaction ID -> raw bill for the detail drawer
+    const billsMap: Record<string, any> = {};
+    bills.forEach((bill: any, i: number) => {
+      const txnId = `TXN-${bill.billNo || String(i + 1).padStart(3, '0')}`;
+      billsMap[txnId] = bill;
+    });
+
+    return { transactions, alerts, billsMap };
   } catch (error) {
     console.error('Failed to load historical data:', error);
-    return { transactions: [], alerts: [] };
+    return { transactions: [], alerts: [], billsMap: {} };
   }
 }
 

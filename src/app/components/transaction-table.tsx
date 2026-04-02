@@ -14,9 +14,10 @@ import { Transaction } from '@/lib/mock-data';
 
 interface TransactionTableProps {
   transactions: Transaction[];
+  onRowClick?: (transaction: Transaction) => void;
 }
 
-export function TransactionTable({ transactions }: TransactionTableProps) {
+export function TransactionTable({ transactions, onRowClick }: TransactionTableProps) {
 
   const getStatusBadge = (status?: string) => {
     if (!status || status === 'pending') {
@@ -67,7 +68,8 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
           {transactions.map((transaction, index) => (
             <TableRow
               key={transaction.id}
-              className={`border-gray-100 hover:bg-blue-50/50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}
+              className={`border-gray-100 hover:bg-blue-50/50 cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}
+              onClick={() => onRowClick?.(transaction)}
             >
               <TableCell className="font-mono text-sm text-gray-700">{transaction.id}</TableCell>
               <TableCell className="font-mono text-sm text-gray-700">{transaction.shop_id}</TableCell>
@@ -87,6 +89,7 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
                   size="sm"
                   disabled
                   className="gap-2 border-gray-200 text-gray-400 cursor-not-allowed"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <Video className="h-4 w-4" />
                   Watch Footage

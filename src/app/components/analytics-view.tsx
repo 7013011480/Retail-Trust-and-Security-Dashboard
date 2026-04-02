@@ -5,7 +5,7 @@ import {
   Tooltip, Legend, AreaChart, Area, ResponsiveContainer,
 } from 'recharts';
 import { Transaction } from '@/lib/mock-data';
-import { format, subDays, startOfDay } from 'date-fns';
+import { format, subDays, startOfDay, getHours } from 'date-fns';
 
 interface AnalyticsViewProps {
   transactions: Transaction[];
@@ -18,6 +18,13 @@ const RISK_COLORS = {
 };
 
 const BLUE_PALETTE = ['#3b82f6', '#6366f1', '#06b6d4'];
+
+const TOOLTIP_STYLE = {
+  backgroundColor: 'white',
+  border: '1px solid #e5e7eb',
+  borderRadius: '8px',
+  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+};
 
 export function AnalyticsView({ transactions }: AnalyticsViewProps) {
   const riskDistribution = useMemo(() => {
@@ -80,6 +87,62 @@ export function AnalyticsView({ transactions }: AnalyticsViewProps) {
       .sort((a, b) => b.count - a.count);
   }, [transactions]);
 
+  // --- New chart data ---
+
+  const hourlyActivity = useMemo(() => {
+    const hourMap: { hour: number; total: number; flagged: number }[] = Array.from(
+      { length: 24 },
+      (_, i) => ({ hour: i, total: 0, flagged: 0 })
+    );
+    transactions.forEach(t => {
+      const h = getHours(t.timestamp);
+      hourMap[h].total++;
+      if (t.risk_level !== 'Low') {
+        hourMap[h].flagged++;
+      }
+    });
+    return hourMap;
+  }, [transactions]);
+
+  const avgValueByStore = useMemo(() => {
+    const storeMap: Record<string, { sum: number; count: number }> = {};
+    transactions.forEach(t => {
+      if (!storeMap[t.shop_id]) {
+        storeMap[t.shop_id] = { sum: 0, count: 0 };
+      }
+      storeMap[t.shop_id].sum += t.transaction_total;
+      storeMap[t.shop_id].count++;
+    });
+    return Object.entries(storeMap)
+      .map(([store, data]) => ({
+        store,
+        avgValue: Math.round(data.sum / data.count),
+      }))
+      .sort((a, b) => b.avgValue - a.avgValue);
+  }, [transactions]);
+
+  const refundRateTrend = useMemo(() => {
+    const now = new Date();
+    const days: { date: string; refunds: number }[] = [];
+
+    for (let i = 4; i >= 0; i--) {
+      const day = startOfDay(subDays(now, i));
+      const nextDay = startOfDay(subDays(now, i - 1));
+      const dayTxns = transactions.filter(t =>
+        t.timestamp >= day && t.timestamp < nextDay
+      );
+      const refundCount = dayTxns.filter(t =>
+        t.triggered_rules?.some(rule => rule.toLowerCase().includes('refund'))
+      ).length;
+
+      days.push({
+        date: format(day, 'MMM dd'),
+        refunds: refundCount,
+      });
+    }
+    return days;
+  }, [transactions]);
+
   const totalFlagged = transactions.filter(t => t.risk_level !== 'Low').length;
   const flaggedPercent = transactions.length > 0
     ? ((totalFlagged / transactions.length) * 100).toFixed(1)
@@ -134,14 +197,7 @@ export function AnalyticsView({ transactions }: AnalyticsViewProps) {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'white',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                  }}
-                />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
@@ -157,14 +213,7 @@ export function AnalyticsView({ transactions }: AnalyticsViewProps) {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 12 }} />
               <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                }}
-              />
+              <Tooltip contentStyle={TOOLTIP_STYLE} />
               <Legend />
               <Area
                 type="monotone"
@@ -197,14 +246,7 @@ export function AnalyticsView({ transactions }: AnalyticsViewProps) {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="store" tick={{ fill: '#6b7280', fontSize: 11 }} />
               <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                }}
-              />
+              <Tooltip contentStyle={TOOLTIP_STYLE} />
               <Legend />
               <Bar dataKey="high" stackId="a" fill={RISK_COLORS.High} name="High" radius={[0, 0, 0, 0]} />
               <Bar dataKey="medium" stackId="a" fill={RISK_COLORS.Medium} name="Medium" />
@@ -227,14 +269,7 @@ export function AnalyticsView({ transactions }: AnalyticsViewProps) {
                 width={180}
                 tick={{ fill: '#6b7280', fontSize: 11 }}
               />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                }}
-              />
+              <Tooltip contentStyle={TOOLTIP_STYLE} />
               <Bar
                 dataKey="count"
                 fill="#3b82f6"
@@ -242,6 +277,75 @@ export function AnalyticsView({ transactions }: AnalyticsViewProps) {
                 name="Occurrences"
               />
             </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        {/* Hourly Activity Heatmap */}
+        <Card className="bg-white border-gray-200 p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-800 mb-1">Hourly Activity</h3>
+          <p className="text-sm text-gray-500 mb-4">Transaction count by hour of day with flagged overlay</p>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={hourlyActivity}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis
+                dataKey="hour"
+                tick={{ fill: '#6b7280', fontSize: 11 }}
+                tickFormatter={(h: number) => `${h}:00`}
+              />
+              <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} />
+              <Tooltip
+                contentStyle={TOOLTIP_STYLE}
+                labelFormatter={(h: number) => `${h}:00 - ${h}:59`}
+              />
+              <Legend />
+              <Bar dataKey="total" fill="#3b82f6" name="Total" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="flagged" fill="#ef4444" name="Flagged" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        {/* Average Transaction Value by Store */}
+        <Card className="bg-white border-gray-200 p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-800 mb-1">Avg Transaction Value by Store</h3>
+          <p className="text-sm text-gray-500 mb-4">Average ticket size per store</p>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={avgValueByStore}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="store" tick={{ fill: '#6b7280', fontSize: 11 }} />
+              <YAxis
+                tick={{ fill: '#6b7280', fontSize: 12 }}
+                tickFormatter={(v: number) => `\u20B9${v.toLocaleString('en-IN')}`}
+              />
+              <Tooltip
+                contentStyle={TOOLTIP_STYLE}
+                formatter={(value: number) => [`\u20B9${value.toLocaleString('en-IN')}`, 'Avg Value']}
+              />
+              <Bar dataKey="avgValue" fill="#6366f1" name="Avg Value" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        {/* Refund Rate Trend */}
+        <Card className="bg-white border-gray-200 p-6 shadow-sm md:col-span-2">
+          <h3 className="text-lg font-semibold text-gray-800 mb-1">Refund Rate Trend</h3>
+          <p className="text-sm text-gray-500 mb-4">Daily refund-related transaction count over last 5 days</p>
+          <ResponsiveContainer width="100%" height={280}>
+            <AreaChart data={refundRateTrend}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 12 }} />
+              <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} allowDecimals={false} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} />
+              <Legend />
+              <Area
+                type="monotone"
+                dataKey="refunds"
+                stroke="#f59e0b"
+                fill="#f59e0b"
+                fillOpacity={0.2}
+                name="Refunds"
+                strokeWidth={2}
+              />
+            </AreaChart>
           </ResponsiveContainer>
         </Card>
       </div>

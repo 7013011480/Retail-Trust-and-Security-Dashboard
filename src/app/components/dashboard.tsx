@@ -1,9 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Badge } from '@/app/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/ui/select';
 import {
   LayoutDashboard,
   Shield,
@@ -17,8 +24,10 @@ import {
   ShieldAlert,
   AlertTriangle,
   Clock,
+  Download,
 } from 'lucide-react';
 import { TransactionTable } from '@/app/components/transaction-table';
+import { TransactionDetailDrawer } from '@/app/components/transaction-detail-drawer';
 import { StreamViewer } from '@/app/components/stream-viewer';
 import { AnalyticsView } from '@/app/components/analytics-view';
 import { EmployeeScorecardView } from '@/app/components/employee-scorecard-view';
@@ -29,22 +38,83 @@ import {
   Alert,
 } from '@/lib/mock-data';
 import { toast } from 'sonner';
+import { subDays, startOfDay } from 'date-fns';
+
+// Animated counter component
+function AnimatedCount({ value }: { value: number }) {
+  const [displayed, setDisplayed] = useState(0);
+
+  useEffect(() => {
+    if (displayed === value) return;
+    const diff = value - displayed;
+    const step = Math.max(1, Math.abs(Math.ceil(diff / 15)));
+    const timer = setTimeout(() => {
+      setDisplayed(prev => {
+        if (diff > 0) return Math.min(prev + step, value);
+        return Math.max(prev - step, value);
+      });
+    }, 30);
+    return () => clearTimeout(timer);
+  }, [value, displayed]);
+
+  return <>{displayed}</>;
+}
+
+function exportToCSV(transactions: Transaction[]) {
+  const headers = ['Transaction ID', 'Shop ID', 'Cam ID', 'POS ID', 'Cashier Name', 'Timestamp', 'Total (₹)', 'Risk Level', 'Status', 'Triggered Rules'];
+  const rows = transactions.map(t => [
+    t.id,
+    t.shop_id,
+    t.cam_id,
+    t.pos_id,
+    t.cashier_name,
+    t.timestamp.toISOString(),
+    t.transaction_total.toFixed(2),
+    t.risk_level,
+    t.status || 'pending',
+    (t.triggered_rules || []).join('; '),
+  ]);
+
+  const csv = [headers, ...rows].map(row =>
+    row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+  ).join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `transactions_${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 export function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [billsMap, setBillsMap] = useState<Record<string, any>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('transactions');
   const [activeFilter, setActiveFilter] = useState<'all' | 'high' | 'medium' | 'pending'>('all');
+  const [timeRange, setTimeRange] = useState<string>('all');
   const [isConnected, setIsConnected] = useState(false);
   const [rawVasData, setRawVasData] = useState<any[]>([]);
   const [rawPosData, setRawPosData] = useState<any[]>([]);
 
+  // Transaction detail drawer
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const handleRowClick = useCallback((transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setDrawerOpen(true);
+  }, []);
+
   // Load historical data from JSON file
   useEffect(() => {
-    loadHistoricalData().then(({ transactions: hist, alerts: histAlerts }) => {
+    loadHistoricalData().then(({ transactions: hist, alerts: histAlerts, billsMap: bMap }) => {
       setTransactions(prev => [...prev, ...hist]);
       setAlerts(prev => [...prev, ...histAlerts]);
+      setBillsMap(prev => ({ ...prev, ...bMap }));
     });
   }, []);
 
@@ -110,20 +180,24 @@ export function Dashboard() {
 
   const handleFilterChange = (filter: 'all' | 'high' | 'medium' | 'pending') => {
     setActiveFilter(filter);
-    toast.info(
-      `Filtering: ${filter === 'all'
-        ? 'All Transactions'
-        : filter === 'high'
-          ? 'High Risk'
-          : filter === 'medium'
-            ? 'Medium Risk'
-            : 'Pending Review'
-      }`
-    );
   };
 
+  // Time-range filtered transactions
+  const timeFilteredTransactions = useMemo(() => {
+    if (timeRange === 'all') return transactions;
+    const now = new Date();
+    let cutoff: Date;
+    switch (timeRange) {
+      case 'today': cutoff = startOfDay(now); break;
+      case '2days': cutoff = startOfDay(subDays(now, 2)); break;
+      case 'week': cutoff = startOfDay(subDays(now, 7)); break;
+      default: return transactions;
+    }
+    return transactions.filter(t => t.timestamp >= cutoff);
+  }, [transactions, timeRange]);
+
   const getFilteredTransactions = () => {
-    let filtered = transactions.filter(
+    let filtered = timeFilteredTransactions.filter(
       (t) =>
         t.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         t.cashier_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -142,6 +216,11 @@ export function Dashboard() {
   };
 
   const filteredTransactions = getFilteredTransactions();
+
+  // Stats from time-filtered data
+  const highCount = timeFilteredTransactions.filter(t => t.risk_level === 'High').length;
+  const mediumCount = timeFilteredTransactions.filter(t => t.risk_level === 'Medium').length;
+  const pendingCount = timeFilteredTransactions.filter(t => !t.status || t.status === 'pending').length;
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -191,7 +270,9 @@ export function Dashboard() {
               </div>
               <div>
                 <div className="text-sm text-blue-100">Total Transactions</div>
-                <div className="text-2xl font-bold text-white">{transactions.length}</div>
+                <div className="text-2xl font-bold text-white">
+                  <AnimatedCount value={timeFilteredTransactions.length} />
+                </div>
               </div>
             </div>
           </Card>
@@ -206,7 +287,7 @@ export function Dashboard() {
               <div>
                 <div className="text-sm text-red-200">High Risk</div>
                 <div className="text-2xl font-bold text-white">
-                  {transactions.filter((t) => t.risk_level === 'High').length}
+                  <AnimatedCount value={highCount} />
                 </div>
               </div>
             </div>
@@ -222,7 +303,7 @@ export function Dashboard() {
               <div>
                 <div className="text-sm text-amber-200">Medium Risk</div>
                 <div className="text-2xl font-bold text-white">
-                  {transactions.filter((t) => t.risk_level === 'Medium').length}
+                  <AnimatedCount value={mediumCount} />
                 </div>
               </div>
             </div>
@@ -238,7 +319,7 @@ export function Dashboard() {
               <div>
                 <div className="text-sm text-blue-100">Pending Review</div>
                 <div className="text-2xl font-bold text-white">
-                  {transactions.filter((t) => !t.status || t.status === 'pending').length}
+                  <AnimatedCount value={pendingCount} />
                 </div>
               </div>
             </div>
@@ -248,7 +329,6 @@ export function Dashboard() {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Main Content Area */}
         <div className="flex-1 overflow-auto">
           <div className="p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -276,7 +356,7 @@ export function Dashboard() {
               </TabsList>
 
               <TabsContent value="transactions" className="space-y-4">
-                {/* Search and Filters */}
+                {/* Search, Filters, Time Range, Export */}
                 <Card className="bg-white border-gray-200 p-4 shadow-sm">
                   <div className="flex items-center gap-4">
                     <div className="relative flex-1">
@@ -300,13 +380,35 @@ export function Dashboard() {
                         <span className="text-xs">✕</span>
                       </Badge>
                     )}
+                    <Select value={timeRange} onValueChange={setTimeRange}>
+                      <SelectTrigger className="w-[140px] bg-white border-gray-200">
+                        <SelectValue placeholder="Time range" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Time</SelectItem>
+                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="2days">Last 2 Days</SelectItem>
+                        <SelectItem value="week">Last Week</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Button
                       variant="outline"
                       className="gap-2 border-gray-200"
                       onClick={() => handleFilterChange('all')}
                     >
                       <Filter className="h-4 w-4" />
-                      {activeFilter === 'all' ? 'Filters' : 'Clear Filters'}
+                      {activeFilter === 'all' ? 'Filters' : 'Clear'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="gap-2 border-gray-200 text-blue-600 hover:bg-blue-50"
+                      onClick={() => {
+                        exportToCSV(filteredTransactions);
+                        toast.success(`Exported ${filteredTransactions.length} transactions`);
+                      }}
+                    >
+                      <Download className="h-4 w-4" />
+                      CSV
                     </Button>
                   </div>
                 </Card>
@@ -314,25 +416,26 @@ export function Dashboard() {
                 {/* Transaction Table */}
                 <TransactionTable
                   transactions={filteredTransactions}
+                  onRowClick={handleRowClick}
                 />
 
                 {/* Results count */}
                 <div className="text-sm text-gray-500 text-center">
-                  Showing {filteredTransactions.length} of {transactions.length}{' '}
+                  Showing {filteredTransactions.length} of {timeFilteredTransactions.length}{' '}
                   transactions
                 </div>
               </TabsContent>
 
               <TabsContent value="analytics">
-                <AnalyticsView transactions={transactions} />
+                <AnalyticsView transactions={timeFilteredTransactions} />
               </TabsContent>
 
               <TabsContent value="employees">
-                <EmployeeScorecardView transactions={transactions} />
+                <EmployeeScorecardView transactions={timeFilteredTransactions} />
               </TabsContent>
 
               <TabsContent value="heatmap">
-                <HeatmapView transactions={transactions} />
+                <HeatmapView transactions={timeFilteredTransactions} />
               </TabsContent>
 
               <TabsContent value="streams">
@@ -341,8 +444,15 @@ export function Dashboard() {
             </Tabs>
           </div>
         </div>
-
       </div>
+
+      {/* Transaction Detail Drawer */}
+      <TransactionDetailDrawer
+        transaction={selectedTransaction}
+        billData={selectedTransaction ? billsMap[selectedTransaction.id] : null}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
     </div>
   );
 }
