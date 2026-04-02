@@ -71,20 +71,17 @@ export async function loadHistoricalData(): Promise<{ transactions: Transaction[
   const base = `http://${window.location.hostname}:8001`;
 
   try {
-    // 1. Load persisted local data (fast, no external API call)
+    // 1. Try persisted local data first (fast, no external API call)
     const localRes = await fetch(`${base}/api/transactions`);
     const localData = await localRes.json();
     const localCount = localData?.transactions?.length || 0;
 
-    // 2. Sync new bills from POS API (only fetches since last timestamp)
-    fetch(`${base}/api/history?days=10`).catch(() => {});
-
     if (localCount > 0) {
-      console.log(`Loaded ${localCount} persisted transactions, syncing new data in background`);
+      console.log(`Loaded ${localCount} persisted transactions`);
       return parseTransactions(localData);
     }
 
-    // 3. No local data — wait for history fetch
+    // 2. No local data — fetch from POS API (first time only)
     console.log('No persisted data, fetching from POS API...');
     const histRes = await fetch(`${base}/api/history?days=10`);
     const histData = await histRes.json();
