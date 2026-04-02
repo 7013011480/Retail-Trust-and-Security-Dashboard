@@ -80,7 +80,7 @@ export async function loadHistoricalData(onSyncComplete?: () => void): Promise<{
     if (localCount > 0) {
       console.log(`Loaded ${localCount} persisted transactions, syncing delta in background...`);
       // Sync new bills since last timestamp in background
-      fetch(`${base}/api/history?days=10`)
+      fetch(`${base}/api/history?days=5`)
         .then(() => {
           console.log('Background sync complete');
           onSyncComplete?.();
@@ -91,7 +91,7 @@ export async function loadHistoricalData(onSyncComplete?: () => void): Promise<{
 
     // 2. No local data — fetch from POS API (first time only)
     console.log('No persisted data, fetching from POS API...');
-    const histRes = await fetch(`${base}/api/history?days=10`);
+    const histRes = await fetch(`${base}/api/history?days=5`);
     const histData = await histRes.json();
     return parseTransactions(histData);
   } catch (error) {

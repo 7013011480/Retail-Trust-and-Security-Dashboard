@@ -37,7 +37,6 @@ import { SettingsPanel } from '@/app/components/settings-panel';
 import { AlertWorkflow } from '@/app/components/alert-workflow';
 import {
   loadHistoricalData,
-  generateAlertsFromTransactions,
   Transaction,
   Alert,
 } from '@/lib/mock-data';
@@ -113,11 +112,13 @@ export function Dashboard() {
   const loadFromLocal = useCallback(async () => {
     try {
       const base = `http://${window.location.hostname}:8001`;
-      const [txnRes, storesRes] = await Promise.all([
+      const [txnRes, alertsRes, storesRes] = await Promise.all([
         fetch(`${base}/api/transactions`),
+        fetch(`${base}/api/alerts`),
         fetch(`${base}/api/stores`).catch(() => null),
       ]);
       const data = await txnRes.json();
+      const alertsData = await alertsRes.json();
       const names: Record<string, string> = {};
       if (storesRes?.ok) {
         const stores = await storesRes.json();
@@ -129,9 +130,14 @@ export function Dashboard() {
         timestamp: new Date(t.timestamp),
         shop_name: t.shop_name || names[t.shop_id] || t.shop_id,
       }));
+      const loadedAlerts = (alertsData || []).map((a: any) => ({
+        ...a,
+        timestamp: new Date(a.timestamp),
+        shop_name: a.shop_name || names[a.shop_id] || a.shop_id,
+      }));
       setTransactions(txns);
       setBillsMap(data?.bills_map || {});
-      setAlerts(generateAlertsFromTransactions(txns));
+      setAlerts(loadedAlerts);
     } catch (e) {
       console.error('Failed to load from local:', e);
     }
@@ -140,7 +146,7 @@ export function Dashboard() {
   const reloadHistoricalData = useCallback(async () => {
     await loadFromLocal();
     const base = `http://${window.location.hostname}:8001`;
-    fetch(`${base}/api/history?days=10`)
+    fetch(`${base}/api/history?days=5`)
       .then(() => loadFromLocal())
       .catch(() => {});
   }, [loadFromLocal]);
@@ -148,7 +154,7 @@ export function Dashboard() {
   const reloadAfterConfigChange = useCallback(async () => {
     try {
       const base = `http://${window.location.hostname}:8001`;
-      await fetch(`${base}/api/history?days=10`);
+      await fetch(`${base}/api/history?days=5`);
       await loadFromLocal();
       toast.success('Data re-classified with new thresholds');
     } catch {
