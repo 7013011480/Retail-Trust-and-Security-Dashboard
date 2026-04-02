@@ -20,7 +20,7 @@ import {
   Activity,
   BarChart3,
   Users,
-  Map,
+  Map as MapIcon,
   ShieldAlert,
   AlertTriangle,
   Clock,
@@ -329,7 +329,7 @@ export function Dashboard() {
                   <Users className="h-4 w-4" /> Store Scorecard
                 </TabsTrigger>
                 <TabsTrigger value="heatmap" className="gap-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
-                  <Map className="h-4 w-4" /> Store Heatmap
+                  <MapIcon className="h-4 w-4" /> Store Heatmap
                 </TabsTrigger>
                 <TabsTrigger value="streams" className="gap-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
                   <Activity className="h-4 w-4" /> Stream Viewer
