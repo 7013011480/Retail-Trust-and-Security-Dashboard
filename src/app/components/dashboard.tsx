@@ -24,7 +24,6 @@ import { AnalyticsView } from '@/app/components/analytics-view';
 import { EmployeeScorecardView } from '@/app/components/employee-scorecard-view';
 import { HeatmapView } from '@/app/components/heatmap-view';
 import {
-  mockHeatmapData,
   loadHistoricalData,
   Transaction,
   Alert,
@@ -333,7 +332,7 @@ export function Dashboard() {
               </TabsContent>
 
               <TabsContent value="heatmap">
-                <HeatmapView data={mockHeatmapData} />
+                <HeatmapView transactions={transactions} />
               </TabsContent>
 
               <TabsContent value="streams">
