@@ -67,7 +67,7 @@ function parseTransactions(data: any): { transactions: Transaction[]; alerts: Al
  * Load data: first try local persisted data (/api/transactions),
  * then sync new bills from POS API (/api/history).
  */
-export async function loadHistoricalData(): Promise<{ transactions: Transaction[]; alerts: Alert[]; billsMap: Record<string, any> }> {
+export async function loadHistoricalData(onSyncComplete?: () => void): Promise<{ transactions: Transaction[]; alerts: Alert[]; billsMap: Record<string, any> }> {
   const base = `http://${window.location.hostname}:8001`;
 
   try {
@@ -77,7 +77,14 @@ export async function loadHistoricalData(): Promise<{ transactions: Transaction[
     const localCount = localData?.transactions?.length || 0;
 
     if (localCount > 0) {
-      console.log(`Loaded ${localCount} persisted transactions`);
+      console.log(`Loaded ${localCount} persisted transactions, syncing delta in background...`);
+      // Sync new bills since last timestamp in background
+      fetch(`${base}/api/history?days=10`)
+        .then(() => {
+          console.log('Background sync complete');
+          onSyncComplete?.();
+        })
+        .catch(() => {});
       return parseTransactions(localData);
     }
 

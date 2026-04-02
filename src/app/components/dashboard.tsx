@@ -108,12 +108,28 @@ export function Dashboard() {
     setDrawerOpen(true);
   }, []);
 
+  const loadFromLocal = useCallback(async () => {
+    try {
+      const base = `http://${window.location.hostname}:8001`;
+      const res = await fetch(`${base}/api/transactions`);
+      const data = await res.json();
+      const txns = (data?.transactions || []).map((t: any) => ({ ...t, timestamp: new Date(t.timestamp) }));
+      setTransactions(txns);
+      setBillsMap(data?.bills_map || {});
+      const { generateAlertsFromTransactions } = await import('@/lib/mock-data');
+      setAlerts(generateAlertsFromTransactions(txns));
+    } catch {}
+  }, []);
+
   const reloadHistoricalData = useCallback(async () => {
-    const { transactions: hist, alerts: histAlerts, billsMap: bMap } = await loadHistoricalData();
+    const { transactions: hist, alerts: histAlerts, billsMap: bMap } = await loadHistoricalData(() => {
+      // After background sync completes, reload from local to pick up new data
+      loadFromLocal();
+    });
     setTransactions(hist);
     setAlerts(histAlerts);
     setBillsMap(bMap);
-  }, []);
+  }, [loadFromLocal]);
 
   const reloadAfterConfigChange = useCallback(async () => {
     // Re-fetch and re-classify from POS API with new thresholds
