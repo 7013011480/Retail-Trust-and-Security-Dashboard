@@ -81,7 +81,7 @@ export function processBillsToTransactions(bills: any[]): Transaction[] {
       status = 'suspicious';
     }
 
-    const timestamp = new Date(`${bill.billDate}T${bill.billTime}`);
+    const timestamp = new Date(`${bill.billDate}T${bill.billTime}+05:30`);
 
     return {
       id: `TXN-${bill.billNo || String(i + 1).padStart(3, '0')}`,
