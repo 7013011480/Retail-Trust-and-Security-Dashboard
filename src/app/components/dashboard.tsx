@@ -238,13 +238,18 @@ export function Dashboard() {
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [transactions, storeNames]);
 
-  const getFilteredTransactions = () => {
-    let filtered = timeFilteredTransactions.filter(t =>
-      t.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.cashier_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.shop_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (t.shop_name || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const filteredTransactions = useMemo(() => {
+    const search = searchTerm.toLowerCase();
+    let filtered = timeFilteredTransactions;
+
+    if (search) {
+      filtered = filtered.filter(t =>
+        t.id.toLowerCase().includes(search) ||
+        t.cashier_name.toLowerCase().includes(search) ||
+        t.shop_id.toLowerCase().includes(search) ||
+        (t.shop_name || '').toLowerCase().includes(search)
+      );
+    }
 
     if (storeFilter !== 'all') filtered = filtered.filter(t => t.shop_id === storeFilter);
 
@@ -252,16 +257,25 @@ export function Dashboard() {
     else if (activeFilter === 'medium') filtered = filtered.filter(t => t.risk_level === 'Medium');
     else if (activeFilter === 'pending') filtered = filtered.filter(t => !t.status || t.status === 'pending');
 
-    // Amount range filter
     const min = parseFloat(minAmount);
     const max = parseFloat(maxAmount);
     if (!isNaN(min)) filtered = filtered.filter(t => t.transaction_total >= min);
     if (!isNaN(max)) filtered = filtered.filter(t => t.transaction_total <= max);
 
     return filtered;
-  };
+  }, [timeFilteredTransactions, searchTerm, storeFilter, activeFilter, minAmount, maxAmount]);
 
-  const filteredTransactions = getFilteredTransactions();
+  // Pagination
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
+  const paginatedTransactions = useMemo(() =>
+    filteredTransactions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [filteredTransactions, page]
+  );
+  const totalPages = Math.ceil(filteredTransactions.length / PAGE_SIZE);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(0); }, [searchTerm, storeFilter, activeFilter, timeRange, minAmount, maxAmount]);
   const highCount = timeFilteredTransactions.filter(t => t.risk_level === 'High').length;
   const mediumCount = timeFilteredTransactions.filter(t => t.risk_level === 'Medium').length;
   const openAlertCount = alerts.filter(a => a.status === 'new' || a.status === 'Fraudulent' || a.status === 'Pending for review').length;
@@ -417,10 +431,36 @@ export function Dashboard() {
                   </div>
                 </Card>
 
-                <TransactionTable transactions={filteredTransactions} onRowClick={handleRowClick} />
+                <TransactionTable transactions={paginatedTransactions} onRowClick={handleRowClick} />
 
-                <div className="text-sm text-gray-500 text-center">
-                  Showing {filteredTransactions.length} of {timeFilteredTransactions.length} transactions
+                {/* Pagination */}
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <span>
+                    Showing {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, filteredTransactions.length)} of {filteredTransactions.length} transactions
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page === 0}
+                      onClick={() => setPage(p => p - 1)}
+                      className="border-gray-200 h-8"
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-gray-600 font-medium">
+                      Page {page + 1} of {totalPages || 1}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page >= totalPages - 1}
+                      onClick={() => setPage(p => p + 1)}
+                      className="border-gray-200 h-8"
+                    >
+                      Next
+                    </Button>
+                  </div>
                 </div>
               </TabsContent>
 
