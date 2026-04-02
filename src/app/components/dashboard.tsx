@@ -38,6 +38,7 @@ import { SettingsPanel } from '@/app/components/settings-panel';
 import { AlertWorkflow } from '@/app/components/alert-workflow';
 import {
   loadHistoricalData,
+  generateAlertsFromTransactions,
   Transaction,
   Alert,
 } from '@/lib/mock-data';
@@ -117,9 +118,10 @@ export function Dashboard() {
       const txns = (data?.transactions || []).map((t: any) => ({ ...t, timestamp: new Date(t.timestamp) }));
       setTransactions(txns);
       setBillsMap(data?.bills_map || {});
-      const { generateAlertsFromTransactions } = await import('@/lib/mock-data');
       setAlerts(generateAlertsFromTransactions(txns));
-    } catch {}
+    } catch (e) {
+      console.error('Failed to load from local:', e);
+    }
   }, []);
 
   const reloadHistoricalData = useCallback(async () => {
