@@ -52,26 +52,45 @@ export function generateAlertsFromTransactions(transactions: Transaction[]): Ale
   });
 }
 
+function parseTransactions(data: any): { transactions: Transaction[]; alerts: Alert[]; billsMap: Record<string, any> } {
+  const rawTransactions = data?.transactions || [];
+  const billsMap: Record<string, any> = data?.bills_map || {};
+  const transactions: Transaction[] = rawTransactions.map((t: any) => ({
+    ...t,
+    timestamp: new Date(t.timestamp),
+  }));
+  const alerts = generateAlertsFromTransactions(transactions);
+  return { transactions, alerts, billsMap };
+}
+
 /**
- * Fetch historical bills from the JSON file in public/ and process them.
+ * Load data: first try local persisted data (/api/transactions),
+ * then sync new bills from POS API (/api/history).
  */
 export async function loadHistoricalData(): Promise<{ transactions: Transaction[]; alerts: Alert[]; billsMap: Record<string, any> }> {
+  const base = `http://${window.location.hostname}:8001`;
+
   try {
-    const response = await fetch(`http://${window.location.hostname}:8001/api/history?days=10`);
-    const data = await response.json();
-    const rawTransactions = data?.transactions || [];
-    const billsMap: Record<string, any> = data?.bills_map || {};
+    // 1. Load persisted local data (fast, no external API call)
+    const localRes = await fetch(`${base}/api/transactions`);
+    const localData = await localRes.json();
+    const localCount = localData?.transactions?.length || 0;
 
-    // Convert API response to Transaction objects
-    const transactions: Transaction[] = rawTransactions.map((t: any) => ({
-      ...t,
-      timestamp: new Date(t.timestamp),
-    }));
+    // 2. Sync new bills from POS API (only fetches since last timestamp)
+    fetch(`${base}/api/history?days=10`).catch(() => {});
 
-    const alerts = generateAlertsFromTransactions(transactions);
-    return { transactions, alerts, billsMap };
+    if (localCount > 0) {
+      console.log(`Loaded ${localCount} persisted transactions, syncing new data in background`);
+      return parseTransactions(localData);
+    }
+
+    // 3. No local data — wait for history fetch
+    console.log('No persisted data, fetching from POS API...');
+    const histRes = await fetch(`${base}/api/history?days=10`);
+    const histData = await histRes.json();
+    return parseTransactions(histData);
   } catch (error) {
-    console.error('Failed to load historical data from API:', error);
+    console.error('Failed to load data:', error);
     return { transactions: [], alerts: [], billsMap: {} };
   }
 }

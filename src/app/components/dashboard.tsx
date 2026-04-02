@@ -108,14 +108,36 @@ export function Dashboard() {
     setDrawerOpen(true);
   }, []);
 
-  // Load historical data
-  useEffect(() => {
-    loadHistoricalData().then(({ transactions: hist, alerts: histAlerts, billsMap: bMap }) => {
-      setTransactions(prev => [...prev, ...hist]);
-      setAlerts(prev => [...prev, ...histAlerts]);
-      setBillsMap(prev => ({ ...prev, ...bMap }));
-    });
+  const reloadHistoricalData = useCallback(async () => {
+    const { transactions: hist, alerts: histAlerts, billsMap: bMap } = await loadHistoricalData();
+    setTransactions(hist);
+    setAlerts(histAlerts);
+    setBillsMap(bMap);
   }, []);
+
+  const reloadAfterConfigChange = useCallback(async () => {
+    // Re-fetch and re-classify from POS API with new thresholds
+    try {
+      const base = `http://${window.location.hostname}:8001`;
+      // Clear persisted data so history re-classifies everything
+      await fetch(`${base}/api/history?days=10`);
+      // Then load the re-classified data
+      const res = await fetch(`${base}/api/transactions`);
+      const data = await res.json();
+      const txns = (data?.transactions || []).map((t: any) => ({ ...t, timestamp: new Date(t.timestamp) }));
+      setTransactions(txns);
+      setAlerts([]);
+      setBillsMap(data?.bills_map || {});
+      toast.success('Data re-classified with new thresholds');
+    } catch {
+      toast.error('Failed to reload data');
+    }
+  }, []);
+
+  // Load historical data (once on mount)
+  useEffect(() => {
+    reloadHistoricalData();
+  }, [reloadHistoricalData]);
 
   useEffect(() => {
     const ws = new WebSocket(`ws://${window.location.hostname}:8001/ws`);
@@ -355,7 +377,7 @@ export function Dashboard() {
               </TabsContent>
 
               <TabsContent value="settings">
-                <SettingsPanel />
+                <SettingsPanel onConfigSaved={reloadAfterConfigChange} />
               </TabsContent>
             </Tabs>
           </div>

@@ -14,7 +14,11 @@ interface RuleConfig {
   idle_pos_minutes: number;
 }
 
-export function SettingsPanel() {
+interface SettingsPanelProps {
+  onConfigSaved?: () => void;
+}
+
+export function SettingsPanel({ onConfigSaved }: SettingsPanelProps) {
   const [config, setConfig] = useState<RuleConfig>({
     discount_threshold_percent: 20,
     refund_amount_threshold: 0,
@@ -42,7 +46,8 @@ export function SettingsPanel() {
         body: JSON.stringify(config),
       });
       if (res.ok) {
-        toast.success('Rule thresholds updated successfully');
+        toast.success('Rule thresholds updated — reloading data...');
+        onConfigSaved?.();
       } else {
         toast.error('Failed to update thresholds');
       }
