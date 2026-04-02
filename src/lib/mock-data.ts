@@ -57,6 +57,7 @@ const RULES = [
   { name: 'Bill not generated', risk: 'Medium' as const, status: 'suspicious' as const },
   { name: 'High Discount', risk: 'Medium' as const, status: 'suspicious' as const },
   { name: 'Refund Processed', risk: 'Medium' as const, status: 'suspicious' as const },
+  { name: 'Complementary Order', risk: 'Medium' as const, status: 'suspicious' as const },
 ];
 
 function seededRandom(seed: number) {
