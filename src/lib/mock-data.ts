@@ -34,71 +34,6 @@ export interface HeatmapData {
   flagged_count: number;
 }
 
-// Camera mapping (same as backend mapping.json)
-const CAMERA_MAP: Record<string, string> = {
-  'NDCIN1223_POS 3': 'NDCIN1223_IN001_01',
-  'NSCIN8227_POS4': 'NSCIN8227_CAM-02_W2',
-  'NDCIN1227_POS 2': 'NDCIN1227_IN001_01',
-};
-
-/**
- * Process raw API bills into classified transactions.
- * Applies POS-only fraud rules (same logic as backend fraud_engine).
- */
-export function processBillsToTransactions(bills: any[]): Transaction[] {
-  return bills.map((bill, i) => {
-    const storeId = bill.ndcin || 'Unknown';
-    const posId = bill.terminalName || 'Unknown';
-    const camId = CAMERA_MAP[`${storeId}_${posId}`] || 'Unknown';
-    const totalAmt = parseFloat(bill.actualBillAmt || 0);
-    const discAmt = parseFloat(bill.discAmt || 0);
-    const returnAmt = parseFloat(bill.returnAmt || 0);
-    const discountPercent = totalAmt > 0 && discAmt > 0 ? (discAmt / totalAmt) * 100 : 0;
-
-    const triggeredRules: string[] = [];
-
-    // Rule: High Discount (>20%)
-    if (discountPercent > 20) {
-      triggeredRules.push(`High Discount (${discountPercent.toFixed(1)}%)`);
-    }
-
-    // Rule: Refund Processed
-    if (returnAmt > 0) {
-      triggeredRules.push(`Refund Processed (Rs.${returnAmt})`);
-    }
-
-    // Rule: Complementary Order
-    if (bill.isComplementary === 'Yes') {
-      triggeredRules.push('Complementary Order');
-    }
-
-    // Determine risk level
-    let riskLevel: 'High' | 'Medium' | 'Low' = 'Low';
-    let status: 'genuine' | 'fraudulent' | 'suspicious' | 'pending' = 'genuine';
-
-    if (triggeredRules.length > 0) {
-      riskLevel = 'Medium';
-      status = 'suspicious';
-    }
-
-    const timestamp = new Date(`${bill.billDate}T${bill.billTime}+05:30`);
-
-    return {
-      id: `TXN-${bill.billNo || String(i + 1).padStart(3, '0')}`,
-      shop_id: storeId,
-      cam_id: camId,
-      pos_id: posId,
-      cashier_name: bill.cashierName || 'Unknown',
-      timestamp,
-      transaction_total: totalAmt,
-      risk_level: riskLevel,
-      triggered_rules: triggeredRules.length > 0 ? triggeredRules : undefined,
-      status,
-      fraud_category: triggeredRules[0] || undefined,
-    };
-  }).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-}
-
 export function generateAlertsFromTransactions(transactions: Transaction[]): Alert[] {
   const flagged = transactions.filter(t => t.risk_level !== 'Low');
 
@@ -136,24 +71,8 @@ export async function loadHistoricalData(): Promise<{ transactions: Transaction[
     const alerts = generateAlertsFromTransactions(transactions);
     return { transactions, alerts, billsMap };
   } catch (error) {
-    console.error('Failed to load historical data from API, falling back to static file:', error);
-
-    // Fallback to static JSON file
-    try {
-      const response = await fetch('/historical-data.json');
-      const data = await response.json();
-      const bills = data?.data?.bills || [];
-      const transactions = processBillsToTransactions(bills);
-      const alerts = generateAlertsFromTransactions(transactions);
-      const billsMap: Record<string, any> = {};
-      bills.forEach((bill: any, i: number) => {
-        const txnId = `TXN-${bill.billNo || String(i + 1).padStart(3, '0')}`;
-        billsMap[txnId] = bill;
-      });
-      return { transactions, alerts, billsMap };
-    } catch {
-      return { transactions: [], alerts: [], billsMap: {} };
-    }
+    console.error('Failed to load historical data from API:', error);
+    return { transactions: [], alerts: [], billsMap: {} };
   }
 }
 
