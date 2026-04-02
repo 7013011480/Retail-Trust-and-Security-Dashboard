@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Card } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
-import { Label } from '@/app/components/ui/label';
-import { Settings, Save } from 'lucide-react';
+import { Badge } from '@/app/components/ui/badge';
+import { Save, RotateCcw, Percent, IndianRupee, Package, Clock, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface RuleConfig {
@@ -14,31 +13,108 @@ interface RuleConfig {
   idle_pos_minutes: number;
 }
 
+const DEFAULTS: RuleConfig = {
+  discount_threshold_percent: 20,
+  refund_amount_threshold: 0,
+  high_value_threshold: 2000,
+  bulk_quantity_threshold: 10,
+  idle_pos_minutes: 30,
+};
+
 interface SettingsPanelProps {
   onConfigSaved?: () => void;
 }
 
+interface RuleCardProps {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  risk: 'High' | 'Medium';
+  value: number;
+  onChange: (val: number) => void;
+  unit: string;
+  min?: number;
+  step?: number;
+  hint?: string;
+}
+
+function RuleCard({ icon, title, description, risk, value, onChange, unit, min = 0, step = 1, hint }: RuleCardProps) {
+  return (
+    <Card className="bg-white border-gray-200 shadow-sm overflow-hidden">
+      <div className="flex items-stretch">
+        {/* Left color bar */}
+        <div className={`w-1 ${risk === 'High' ? 'bg-red-500' : 'bg-amber-500'}`} />
+
+        <div className="flex-1 p-4">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className={`p-2 rounded-lg ${risk === 'High' ? 'bg-red-50' : 'bg-amber-50'}`}>
+                {icon}
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
+                <p className="text-xs text-gray-400 mt-0.5">{description}</p>
+              </div>
+            </div>
+            <Badge className={`text-[10px] ${risk === 'High' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+              {risk} Risk
+            </Badge>
+          </div>
+
+          {/* Slider + Input */}
+          <div className="flex items-center gap-3">
+            <input
+              type="range"
+              min={min}
+              max={unit === '%' ? 100 : unit === 'min' ? 120 : unit === 'items' ? 50 : 10000}
+              step={step}
+              value={value}
+              onChange={e => onChange(parseFloat(e.target.value))}
+              className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            />
+            <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 min-w-[90px]">
+              <input
+                type="number"
+                min={min}
+                step={step}
+                value={value}
+                onChange={e => onChange(parseFloat(e.target.value) || 0)}
+                className="w-14 bg-transparent text-sm font-mono text-gray-800 text-right outline-none"
+              />
+              <span className="text-xs text-gray-400">{unit}</span>
+            </div>
+          </div>
+
+          {hint && (
+            <p className="text-[11px] text-gray-400 mt-2 italic">{hint}</p>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export function SettingsPanel({ onConfigSaved }: SettingsPanelProps) {
-  const [config, setConfig] = useState<RuleConfig>({
-    discount_threshold_percent: 20,
-    refund_amount_threshold: 0,
-    high_value_threshold: 2000,
-    bulk_quantity_threshold: 10,
-    idle_pos_minutes: 30,
-  });
+  const [config, setConfig] = useState<RuleConfig>(DEFAULTS);
+  const [savedConfig, setSavedConfig] = useState<RuleConfig>(DEFAULTS);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const hasChanges = JSON.stringify(config) !== JSON.stringify(savedConfig);
 
   useEffect(() => {
     fetch(`http://${window.location.hostname}:8001/api/config`)
       .then(res => res.json())
       .then(data => {
         setConfig(data);
+        setSavedConfig(data);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
   const handleSave = async () => {
+    setSaving(true);
     try {
       const res = await fetch(`http://${window.location.hostname}:8001/api/config`, {
         method: 'POST',
@@ -46,125 +122,114 @@ export function SettingsPanel({ onConfigSaved }: SettingsPanelProps) {
         body: JSON.stringify(config),
       });
       if (res.ok) {
-        toast.success('Rule thresholds updated — reloading data...');
+        setSavedConfig(config);
+        toast.success('Thresholds saved — re-classifying transactions...');
         onConfigSaved?.();
       } else {
-        toast.error('Failed to update thresholds');
+        toast.error('Failed to save');
       }
     } catch {
-      toast.error('Failed to connect to backend');
+      toast.error('Connection failed');
     }
+    setSaving(false);
   };
 
-  const updateField = (field: keyof RuleConfig, value: string) => {
-    setConfig(prev => ({ ...prev, [field]: parseFloat(value) || 0 }));
+  const handleReset = () => {
+    setConfig(DEFAULTS);
+    toast.info('Reset to defaults (save to apply)');
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16 text-gray-400">
-        Loading configuration...
-      </div>
-    );
+    return <div className="flex items-center justify-center py-16 text-gray-400">Loading configuration...</div>;
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-gray-800 mb-1">Rule Configuration</h2>
-        <p className="text-sm text-gray-500">Configure fraud detection thresholds. Changes apply to both live and historical classification.</p>
+    <div className="space-y-5 max-w-3xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-gray-800">Fraud Detection Rules</h2>
+          <p className="text-sm text-gray-500">Adjust thresholds to control when transactions get flagged</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs border-gray-200 h-8" onClick={handleReset}>
+            <RotateCcw className="h-3 w-3" /> Reset Defaults
+          </Button>
+          <Button
+            size="sm"
+            className={`gap-1.5 text-xs h-8 ${hasChanges ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+            disabled={!hasChanges || saving}
+            onClick={handleSave}
+          >
+            <Save className="h-3 w-3" /> {saving ? 'Saving...' : 'Save & Apply'}
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-white border-gray-200 p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-blue-700 uppercase tracking-wide mb-4">Discount Rules</h3>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-gray-600">Discount Threshold (%)</Label>
-              <p className="text-xs text-gray-400 mb-1">Flag transactions with discount above this percentage</p>
-              <Input
-                type="number"
-                value={config.discount_threshold_percent}
-                onChange={(e) => updateField('discount_threshold_percent', e.target.value)}
-                className="bg-gray-50 border-gray-200"
-              />
-            </div>
-          </div>
-        </Card>
+      {hasChanges && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-700">
+          You have unsaved changes. Click "Save & Apply" to re-classify all transactions.
+        </div>
+      )}
 
-        <Card className="bg-white border-gray-200 p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-blue-700 uppercase tracking-wide mb-4">Refund Rules</h3>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-gray-600">Refund Amount Threshold ({'\u20B9'})</Label>
-              <p className="text-xs text-gray-400 mb-1">Flag refunds above this amount (0 = flag all refunds)</p>
-              <Input
-                type="number"
-                value={config.refund_amount_threshold}
-                onChange={(e) => updateField('refund_amount_threshold', e.target.value)}
-                className="bg-gray-50 border-gray-200"
-              />
-            </div>
-          </div>
-        </Card>
+      <div className="space-y-3">
+        <RuleCard
+          icon={<Percent className="h-4 w-4 text-amber-600" />}
+          title="Discount Threshold"
+          description="Flag transactions where discount exceeds this percentage"
+          risk="Medium"
+          value={config.discount_threshold_percent}
+          onChange={v => setConfig(p => ({ ...p, discount_threshold_percent: v }))}
+          unit="%"
+          step={5}
+          hint="Common setting: 10-20% for F&B outlets"
+        />
 
-        <Card className="bg-white border-gray-200 p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-blue-700 uppercase tracking-wide mb-4">Transaction Value</h3>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-gray-600">High Value Threshold ({'\u20B9'})</Label>
-              <p className="text-xs text-gray-400 mb-1">Flag transactions exceeding this amount</p>
-              <Input
-                type="number"
-                value={config.high_value_threshold}
-                onChange={(e) => updateField('high_value_threshold', e.target.value)}
-                className="bg-gray-50 border-gray-200"
-              />
-            </div>
-          </div>
-        </Card>
+        <RuleCard
+          icon={<IndianRupee className="h-4 w-4 text-amber-600" />}
+          title="Refund Amount Threshold"
+          description="Flag non-cash refunds above this amount (0 = flag all)"
+          risk="Medium"
+          value={config.refund_amount_threshold}
+          onChange={v => setConfig(p => ({ ...p, refund_amount_threshold: v }))}
+          unit={'\u20B9'}
+          step={100}
+          hint="Cash change (return amount) is excluded automatically"
+        />
 
-        <Card className="bg-white border-gray-200 p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-blue-700 uppercase tracking-wide mb-4">Bulk Purchase</h3>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-gray-600">Bulk Quantity Threshold</Label>
-              <p className="text-xs text-gray-400 mb-1">Flag transactions with total items above this count</p>
-              <Input
-                type="number"
-                value={config.bulk_quantity_threshold}
-                onChange={(e) => updateField('bulk_quantity_threshold', e.target.value)}
-                className="bg-gray-50 border-gray-200"
-              />
-            </div>
-          </div>
-        </Card>
+        <RuleCard
+          icon={<ShieldAlert className="h-4 w-4 text-amber-600" />}
+          title="High Value Transaction"
+          description="Flag transactions exceeding this bill amount"
+          risk="Medium"
+          value={config.high_value_threshold}
+          onChange={v => setConfig(p => ({ ...p, high_value_threshold: v }))}
+          unit={'\u20B9'}
+          step={500}
+          hint="Set based on your highest expected normal transaction"
+        />
 
-        <Card className="bg-white border-gray-200 p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-blue-700 uppercase tracking-wide mb-4">POS Idle Time</h3>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-gray-600">Idle POS Alert (minutes)</Label>
-              <p className="text-xs text-gray-400 mb-1">Alert when a POS has no transactions for this duration</p>
-              <Input
-                type="number"
-                value={config.idle_pos_minutes}
-                onChange={(e) => updateField('idle_pos_minutes', e.target.value)}
-                className="bg-gray-50 border-gray-200"
-              />
-            </div>
-          </div>
-        </Card>
-      </div>
+        <RuleCard
+          icon={<Package className="h-4 w-4 text-amber-600" />}
+          title="Bulk Purchase"
+          description="Flag when total item quantity exceeds this count"
+          risk="Medium"
+          value={config.bulk_quantity_threshold}
+          onChange={v => setConfig(p => ({ ...p, bulk_quantity_threshold: v }))}
+          unit="items"
+          step={1}
+        />
 
-      <div className="flex justify-end">
-        <Button
-          onClick={handleSave}
-          className="gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6"
-        >
-          <Save className="h-4 w-4" />
-          Save Configuration
-        </Button>
+        <RuleCard
+          icon={<Clock className="h-4 w-4 text-amber-600" />}
+          title="POS Idle Alert"
+          description="Alert when a POS terminal has no activity for this duration"
+          risk="Medium"
+          value={config.idle_pos_minutes}
+          onChange={v => setConfig(p => ({ ...p, idle_pos_minutes: v }))}
+          unit="min"
+          step={5}
+          hint="Set higher for stores with low traffic"
+        />
       </div>
     </div>
   );
